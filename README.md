@@ -5,8 +5,16 @@ scipy, seaborn, pytest, mypy, black, and ruff.
 
 ## Setup
 
+macOS/Linux:
+
 ```bash
 ./install.sh
+```
+
+Windows (PowerShell or Command Prompt):
+
+```bat
+.\install.bat
 ```
 
 ## Common commands
