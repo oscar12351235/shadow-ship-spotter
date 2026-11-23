@@ -1,0 +1,56 @@
+{
+  "b1844cde847a3942v": {
+    "vv_vh_same_grid": true,
+    "labels": 722,
+    "labels_outside_raster": 0,
+    "pixel_to_geo_error_m": {
+      "count": 722.0,
+      "mean": 0.07,
+      "std": 0.71,
+      "min": 0.0,
+      "25%": 0.0,
+      "50%": 0.0,
+      "75%": 0.0,
+      "max": 8.66
+    },
+    "labels_geo_error_gt_100m": 0,
+    "labels_with_box": 715,
+    "bad_boxes": 0
+  },
+  "fc2f57371370c521v": {
+    "vv_vh_same_grid": true,
+    "labels": 1079,
+    "labels_outside_raster": 0,
+    "pixel_to_geo_error_m": {
+      "count": 1079.0,
+      "mean": 0.02,
+      "std": 0.29,
+      "min": 0.0,
+      "25%": 0.0,
+      "50%": 0.0,
+      "75%": 0.0,
+      "max": 5.44
+    },
+    "labels_geo_error_gt_100m": 0,
+    "labels_with_box": 1076,
+    "bad_boxes": 0
+  },
+  "fe6a8d80fb5ebb8ev": {
+    "vv_vh_same_grid": true,
+    "labels": 506,
+    "labels_outside_raster": 0,
+    "pixel_to_geo_error_m": {
+      "count": 506.0,
+      "mean": 0.19,
+      "std": 1.01,
+      "min": 0.0,
+      "25%": 0.0,
+      "50%": 0.0,
+      "75%": 0.0,
+      "max": 7.04
+    },
+    "labels_geo_error_gt_100m": 0,
+    "labels_with_box": 489,
+    "bad_boxes": 0
+  }
+}

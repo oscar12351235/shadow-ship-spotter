@@ -23,3 +23,9 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+
+# Data: large files never go into Git.
+# Tracked exceptions: data/sources.json, data/inventory/, data/splits/, data/README.md
+data/raw/
+data/processed/
+*.part

@@ -1,0 +1,140 @@
+{
+  "train": {
+    "file": "train.csv",
+    "rows": 64113,
+    "scenes": 554,
+    "columns": [
+      "detect_lat",
+      "detect_lon",
+      "vessel_length_m",
+      "source",
+      "detect_scene_row",
+      "detect_scene_column",
+      "is_vessel",
+      "is_fishing",
+      "distance_from_shore_km",
+      "scene_id",
+      "confidence",
+      "top",
+      "left",
+      "bottom",
+      "right",
+      "detect_id"
+    ],
+    "null_fraction": {
+      "detect_lat": 0.0,
+      "detect_lon": 0.0,
+      "vessel_length_m": 0.2934,
+      "source": 0.0,
+      "detect_scene_row": 0.0,
+      "detect_scene_column": 0.0,
+      "is_vessel": 0.1723,
+      "is_fishing": 0.4326,
+      "distance_from_shore_km": 0.0,
+      "scene_id": 0.0,
+      "confidence": 0.0,
+      "top": 1.0,
+      "left": 1.0,
+      "bottom": 1.0,
+      "right": 1.0,
+      "detect_id": 0.0,
+      "partition": 0.0
+    },
+    "duplicate_detect_ids": 0,
+    "is_vessel": {
+      "true": 36375,
+      "false": 16692,
+      "NaN": 11046
+    },
+    "is_fishing": {
+      "NaN": 27738,
+      "false": 23865,
+      "true": 12510
+    },
+    "confidence": {
+      "MEDIUM": 36375,
+      "HIGH": 16692,
+      "LOW": 11046
+    },
+    "source": {
+      "ais": 64113
+    },
+    "vessel_length_m_available": 45303,
+    "distance_from_shore_km_9999_sentinel": 53046
+  },
+  "validation": {
+    "file": "validation.csv",
+    "rows": 19224,
+    "scenes": 50,
+    "columns": [
+      "detect_lat",
+      "detect_lon",
+      "vessel_length_m",
+      "source",
+      "detect_scene_row",
+      "detect_scene_column",
+      "is_vessel",
+      "is_fishing",
+      "distance_from_shore_km",
+      "scene_id",
+      "confidence",
+      "top",
+      "left",
+      "bottom",
+      "right",
+      "detect_id"
+    ],
+    "null_fraction": {
+      "detect_lat": 0.0,
+      "detect_lon": 0.0,
+      "vessel_length_m": 0.6358,
+      "source": 0.0,
+      "detect_scene_row": 0.0,
+      "detect_scene_column": 0.0,
+      "is_vessel": 0.0062,
+      "is_fishing": 0.7976,
+      "distance_from_shore_km": 0.0,
+      "scene_id": 0.0,
+      "confidence": 0.0,
+      "top": 0.0091,
+      "left": 0.0091,
+      "bottom": 0.0091,
+      "right": 0.0091,
+      "detect_id": 0.0,
+      "partition": 0.0
+    },
+    "duplicate_detect_ids": 0,
+    "is_vessel": {
+      "true": 11957,
+      "false": 7148,
+      "NaN": 119
+    },
+    "is_fishing": {
+      "NaN": 15333,
+      "false": 2930,
+      "true": 961
+    },
+    "confidence": {
+      "HIGH": 9219,
+      "MEDIUM": 6571,
+      "LOW": 3434
+    },
+    "source": {
+      "ais/manual": 11027,
+      "manual": 8022,
+      "ais": 175
+    },
+    "vessel_length_m_available": 7001,
+    "distance_from_shore_km_9999_sentinel": 9314
+  },
+  "scene_mapping": {
+    "rows": 754,
+    "by_partition": {
+      "train": 554,
+      "public": 150,
+      "validation": 50
+    }
+  },
+  "raw_ais_tracks_in_labels": false,
+  "timestamp_column_in_labels": false
+}
