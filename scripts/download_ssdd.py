@@ -23,6 +23,7 @@ import sys
 from pathlib import Path
 
 from shadow_ship_spotter.data.download import download, gdrive_direct_url, verify
+from shadow_ship_spotter.data.storage import publish_directory, write_json
 from shadow_ship_spotter.paths import RAW_DIR, SOURCES_FILE
 
 KEY = "ssdd"
@@ -61,7 +62,12 @@ def main() -> None:
         print(f"Resolving Google Drive file {src['gdrive_id']} ...", file=sys.stderr)
         url = gdrive_direct_url(src["gdrive_id"])
         print(f"Downloading {src['filename']} -> {archive}", file=sys.stderr)
-        download(url, archive, expected_size=src.get("size_bytes"))
+        download(
+            url,
+            archive,
+            expected_size=src.get("size_bytes"),
+            checksum=("sha256", src["sha256"]) if src.get("sha256") else None,
+        )
 
     print("Verifying checksum ...", file=sys.stderr)
     digest = verify(archive, src.get("sha256"), src.get("size_bytes"))
@@ -71,7 +77,7 @@ def main() -> None:
             size_bytes=archive.stat().st_size,
             downloaded_on=dt.date.today().isoformat(),
         )
-        SOURCES_FILE.write_text(json.dumps(sources, indent=2) + "\n")
+        write_json(SOURCES_FILE, sources)
         print(f"Recorded sha256={digest} in {SOURCES_FILE}", file=sys.stderr)
     else:
         print(f"OK sha256={digest}", file=sys.stderr)
@@ -79,13 +85,19 @@ def main() -> None:
     if args.no_extract:
         return
     out = DEST_DIR / "extracted"
-    if out.exists() and any(out.iterdir()):
-        print(f"Already extracted: {out} (delete it to re-extract)", file=sys.stderr)
-        return
-    out.mkdir(parents=True, exist_ok=True)
-    cmd = _extract_cmd(archive, out)
-    print("Extracting:", " ".join(cmd), file=sys.stderr)
-    subprocess.run(cmd, check=True)
+
+    def complete(stage: Path) -> bool:
+        coco = stage / "Official-SSDD-OPEN/BBox_SSDD/coco_style"
+        return all(
+            (coco / "annotations" / f"{split}.json").is_file()
+            and len(list((coco / "images" / split).glob("*.jpg"))) == count
+            for split, count in (("train", 928), ("test", 232))
+        )
+
+    def extract(stage: Path) -> None:
+        subprocess.run(_extract_cmd(archive, stage), check=True)
+
+    publish_directory(out, extract, complete)
     print(f"Extracted to {out}", file=sys.stderr)
 
 

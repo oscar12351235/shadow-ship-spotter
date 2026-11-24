@@ -108,3 +108,14 @@ def test_geometry_and_filters() -> None:
     }
     assert L.normalise_mmsi(244577000.0) == "244577000" and L.normalise_mmsi(None) is None
     assert L.normalise_mmsi(12.5) is None
+    assert L.normalise_mmsi("012345678") == "012345678"
+    assert L.normalise_mmsi(12345678.0) is None and L.normalise_mmsi(1234567890) is None
+
+
+def test_probe_interpolation_rejects_ambiguous_inputs():
+    assert L.parse_utc("2020-09-28T17:18:16") is None
+    a = dict(ric="C}A", time_utc=T0 - timedelta(minutes=1), lat=3.0, lon=179.0)
+    b = dict(a, time_utc=T0 + timedelta(minutes=1), lon=-179.0)
+    assert L.interpolate_position([a, b], T0, 120) is None
+    assert L.interpolate_position([a, dict(b, ric="C}B", lon=178.9)], T0, 120) is None
+    assert L.interpolate_position([a, dict(a, lat=2.9), dict(b, lon=178.9)], T0, 120) is None

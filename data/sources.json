@@ -82,10 +82,13 @@
       "training_evaluation (classifier stage)"
     ],
     "landing_page": "https://doi.org/10.6084/m9.figshare.24309469",
+    "article_version": 3,
     "license": "CC BY 4.0",
     "citation": "F. S. Paolo et al., \"Satellite mapping reveals extensive industrial activity at sea,\" Nature 625, 85-91 (2024).",
     "files": {
+      "README.md": {"file_id": 45538896, "bytes": 5183, "md5": "1fa3054cb3739750bb7a0cde0e7d5b2f"},
       "detection_tiles.zip": {
+        "file_id": 45487110,
         "bytes": 142908413,
         "md5": "b3bcd32490a3e0d66b7ee56d2e3ade17"
       }
@@ -100,9 +103,12 @@
       "map_reveal (AIS-matched SAR detections by GFW; model predictions, not ground truth, not raw AIS)"
     ],
     "landing_page": "https://doi.org/10.6084/m9.figshare.24309475",
+    "article_version": 4,
     "license": "CC BY 4.0",
     "files": {
+      "README.md": {"file_id": 45162958, "bytes": 15152, "md5": "62a3185905d06921632bb3ceee8f54a6"},
       "industrial_vessels_v20240102.csv.zip": {
+        "file_id": 43882980,
         "bytes": 1728747413,
         "md5": "a98f09e156b2cbb6dfb4887bd7efc0de"
       }
@@ -112,7 +118,13 @@
     "reproduce": "uv run python -I scripts/download_gfw_paolo2024.py --with-detections"
   },
   "planetary_computer_s1_grd": {
-    "status": "access_proven (one 3072px window read)",
+    "status": "archived native VV/VH window reads verified, including georeferenced offline replay",
+    "legacy_native_crop_sha256": {
+      "S1B_IW_GRDH_1SDV_20190318T104813_20190318T104842_015408_01CDA6_F3BE": {
+        "VV": "2b4486536d7636ed83090c2a5247c08e95fbc5a2971261dd436b44a2e4b464f8",
+        "VH": "cd89f4defd04001d3135fe6895b81409bf9bf08497e8bab61c7af110a7085f58"
+      }
+    },
     "needs": [
       "map_reveal (imagery, footprints, acquisition times)"
     ],
@@ -123,7 +135,7 @@
     "reproduce": "uv run python -I scripts/fetch_pc_s1_window.py --scene <ESA name> --lat <lat> --lon <lon>"
   },
   "copernicus_data_space": {
-    "status": "catalogue_verified_anonymous; download_not_tested (account required)",
+    "status": "anonymous catalogue verified for exact historical SAFE, pixel access and equivalence unverified",
     "needs": [
       "map_reveal (authoritative imagery archive, footprints)"
     ],
@@ -159,10 +171,10 @@
     "landing_page": "https://coast.noaa.gov/htdata/CMSP/AISDataHandler/2020/index.html"
   },
   "lseg_workspace": {
-    "status": "access_tested (desktop session); suitable only for recent dates, commercial-fleet subset",
+    "status": "prior desktop probe and archived reports verified, desktop unreachable during 2026-11-24 reassessment",
     "needs": [
-      "ais_map (recent dates only)",
-      "matching (recent imagery only)"
+      "named historical position samples and dated Search snapshots",
+      "matching research with unknown area reception and incomplete identifier coverage"
     ],
     "name": "LSEG Workspace (Eikon) vessel data via LSEG Data Library for Python",
     "access": "desktop session: Workspace desktop app running + logged in on the same machine (Data API Proxy 127.0.0.1:9000); EIKON_APP_KEY in git-ignored .env (never commit)",

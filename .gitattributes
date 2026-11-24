@@ -1,0 +1,3 @@
+# These versioned inputs have byte-level hashes in the training manifest.
+data/inventory/*.csv text eol=lf
+data/splits/*.json text eol=lf

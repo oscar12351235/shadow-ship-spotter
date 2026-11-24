@@ -168,7 +168,7 @@ def parse_adc(raw: Any) -> tuple[list[str], list[list[Any]], list[dict[str, Any]
 
 
 def parse_utc(value: Any) -> datetime | None:
-    """Parse an LSEG timestamp. Values carry an explicit 'Z'; naive values are treated as UTC."""
+    """Parse a provider timestamp carrying an explicit UTC offset."""
     if value in (None, ""):
         return None
     s = str(value).strip().replace("Z", "+00:00")
@@ -176,7 +176,7 @@ def parse_utc(value: Any) -> datetime | None:
         dt = datetime.fromisoformat(s)
     except ValueError:
         return None
-    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
+    return None if dt.tzinfo is None else dt.astimezone(UTC)
 
 
 def _num(value: Any) -> float | None:
@@ -278,6 +278,15 @@ def interpolate_position(
     if not before or not after:
         return None
     a, b = before[-1], after[0]
+    if (
+        any(p["ric"] != a["ric"] for p in pts)
+        or abs(a["lon"] - b["lon"]) > 180
+        or any(
+            len({(p["lat"], p["lon"]) for p in pts if p["time_utc"] == endpoint["time_utc"]}) > 1
+            for endpoint in (a, b)
+        )
+    ):
+        return None
     ga, gb = (t - a["time_utc"]).total_seconds(), (b["time_utc"] - t).total_seconds()
     if ga > max_gap_s or gb > max_gap_s:
         return None
@@ -352,11 +361,14 @@ def chunks(seq: Sequence[Any], n: int) -> Iterator[Sequence[Any]]:
 
 
 def normalise_mmsi(value: Any) -> str | None:
-    """GFW stores MMSI as float; return a 9-digit-or-shorter integer string, else None."""
+    """Keep a supplied nine-digit MMSI. Lost leading digits cannot be reconstructed."""
+    if isinstance(value, str) and value.isascii() and value.isdigit():
+        return value if len(value) == 9 else None
     f = _num(value)
     if f is None or f <= 0 or not float(f).is_integer():
         return None
-    return str(int(f))
+    digits = str(int(f))
+    return digits if len(digits) == 9 else None
 
 
 def utc_now() -> datetime:

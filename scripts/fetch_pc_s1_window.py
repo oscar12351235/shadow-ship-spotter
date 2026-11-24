@@ -1,40 +1,37 @@
-"""Proof of access for the "Reveal hidden vessels" route: read a small window of a Sentinel-1
-GRD scene from Microsoft Planetary Computer (anonymous SAS token, cloud-optimised GeoTIFF range
-reads; no full-scene download) and overlay GFW's AIS-matched / unmatched SAR detections for the
-*same scene* (same acquisition timestamp).
+"""Read a PC native-DN window and plot the same-scene historical GFW reference layer.
 
-Usage:
-    uv run python -I scripts/fetch_pc_s1_window.py \
-        --scene S1B_IW_GRDH_1SDV_20190318T104813_20190318T104842_015408_01CDA6_F3BE \
-        --lat 18.62 --lon 109.84 --size 2048
-
-Writes data/raw/planetary_computer/<pc_item_id>/window_{vv,vh}.tif (+ item.json without tokens)
-and docs/figures/scs_reveal_feasibility.png. GRD rasters are in radar geometry: lat/lon <-> pixel
-uses the product GCPs (accuracy tens of metres; fine for a feasibility check, not for matching).
-Pixel values are uncalibrated digital numbers (DN); dB here is 10*log10(DN^2) for display only.
+The original --scene/--lat/--lon/--size interface is supported. Each export has its own
+directory, parent-grid offsets, shifted WGS84 GCPs and source receipts. --offline replays
+previous exact reads. The optional comparison layer comes from the 2017–2021 publication.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import urllib.request
+from pathlib import Path
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
-import polars as pl  # noqa: E402
 import rasterio  # noqa: E402
+from rasterio.control import GroundControlPoint  # noqa: E402
 from rasterio.transform import GCPTransformer  # noqa: E402
-from rasterio.windows import Window  # noqa: E402
 
-from shadow_ship_spotter.data.download import USER_AGENT  # noqa: E402
-from shadow_ship_spotter.paths import FIGURES_DIR, PROCESSED_DIR, RAW_DIR  # noqa: E402
+from shadow_ship_spotter.data.contracts import Policy, RasterRequest  # noqa: E402
+from shadow_ship_spotter.data.geo import points, window_at  # noqa: E402
+from shadow_ship_spotter.data.imagery import RasterResolver  # noqa: E402
+from shadow_ship_spotter.data.reference import SCS, load_reference  # noqa: E402
+from shadow_ship_spotter.data.storage import (
+    publish_directory,
+    staged_file,
+    write_json,
+)  # noqa: E402
+from shadow_ship_spotter.data.study import raster_summary  # noqa: E402
+from shadow_ship_spotter.paths import DATA_DIR, FIGURES_DIR  # noqa: E402
 
-STAC = "https://planetarycomputer.microsoft.com/api/stac/v1"
-SAS = "https://planetarycomputer.microsoft.com/api/sas/v1/token/sentinel-1-grd"
 COLOURS = {
     "matched_fishing": "#1f77b4",
     "matched_nonfishing": "#17becf",
@@ -43,116 +40,95 @@ COLOURS = {
 }
 
 
-def get_json(url: str, body: dict | None = None) -> dict:
-    data = json.dumps(body).encode() if body else None
-    headers = {"User-Agent": USER_AGENT, "Content-Type": "application/json"}
-    return json.load(
-        urllib.request.urlopen(urllib.request.Request(url, data, headers), timeout=60)
-    )  # noqa: S310
-
-
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    ap.add_argument("--scene", required=True, help="full ESA product name (as in GFW scene_id)")
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--scene", required=True)
     ap.add_argument("--lat", type=float, required=True)
     ap.add_argument("--lon", type=float, required=True)
-    ap.add_argument("--size", type=int, default=2048, help="window size in pixels")
+    ap.add_argument("--size", type=int, default=2048)
+    ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--figure", type=str, default=str(FIGURES_DIR / "scs_reveal_feasibility.png"))
     a = ap.parse_args()
+    policy = Policy.read(DATA_DIR / "loading.toml").model_copy(update={"online": not a.offline})
+    resolver = RasterResolver.local(DATA_DIR, policy)
+    lookup = resolver.locate(a.scene, "s1-grd-dn")
+    if lookup.grid is None:
+        raise SystemExit(lookup.model_dump_json())
+    grid = lookup.grid
+    w = window_at(grid, a.lon, a.lat, a.size)
+    result = resolver.resolve(RasterRequest(scene=a.scene, product="s1-grd-dn", window=w))
+    chips = result.stack()
+    out = DATA_DIR / "processed/pc_windows" / a.scene / f"{w.col}_{w.row}_{w.width}_{w.height}"
+    meta = raster_summary(result)
 
-    pc_id = "_".join(a.scene.split("_")[:8])  # PC ids drop the 4-char product unique id
-    item = get_json(f"{STAC}/search", {"collections": ["sentinel-1-grd"], "ids": [pc_id]})[
-        "features"
-    ]
-    if not item:
-        raise SystemExit(f"{pc_id} not found on Planetary Computer")
-    item = item[0]
-    token = get_json(SAS)["token"]
-    out = RAW_DIR / "planetary_computer" / pc_id
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "item.json").write_text(json.dumps(item, indent=2))  # hrefs are unsigned
+    def export(stage):
+        for band, pixels in zip(result.request.bands, chips, strict=True):
+            with rasterio.open(
+                stage / f"window_{band.lower()}.tif",
+                "w",
+                driver="GTiff",
+                height=w.height,
+                width=w.width,
+                count=1,
+                dtype=pixels.dtype,
+                nodata=0,
+                compress="deflate",
+                gcps=[
+                    GroundControlPoint(row=r - w.row, col=c - w.col, x=x, y=y, z=z)
+                    for r, c, x, y, z in grid.gcps
+                ],
+                crs=grid.crs,
+            ) as dst:
+                dst.write(pixels.filled(0), 1)
+        write_json(stage / "window_meta.json", meta)
 
-    chips, meta = {}, {}
-    for pol in ("vv", "vh"):
-        href = f"{item['assets'][pol]['href']}?{token}"
-        with rasterio.open(href) as src:
-            gcps, gcp_crs = src.gcps
-            tr = GCPTransformer(gcps)
-            row, col = tr.rowcol(a.lon, a.lat)
-            win = Window(col - a.size // 2, row - a.size // 2, a.size, a.size)
-            data = src.read(1, window=win, boundless=True, fill_value=0)
-            meta[pol] = {
-                "shape": src.shape,
-                "dtype": src.dtypes[0],
-                "gcps": len(gcps),
-                "gcp_crs": str(gcp_crs),
-                "window": [int(win.col_off), int(win.row_off), a.size, a.size],
-            }
-            prof = {
-                "driver": "GTiff",
-                "height": a.size,
-                "width": a.size,
-                "count": 1,
-                "dtype": src.dtypes[0],
-                "compress": "deflate",
-            }
-            with rasterio.open(out / f"window_{pol}.tif", "w", **prof) as dst:
-                dst.write(data, 1)
-                dst.update_tags(
-                    source=item["id"],
-                    window=json.dumps(meta[pol]["window"]),
-                    note="radar geometry; use item GCPs for geolocation",
-                )
-            chips[pol] = data.astype(float)
-    (out / "window_meta.json").write_text(json.dumps(meta, indent=2))
-
-    det = (
-        pl.read_parquet(PROCESSED_DIR / "gfw_sar_detections_scs.parquet")
-        .filter(pl.col("scene_id") == a.scene)
-        .to_pandas()
+    publish_directory(
+        out,
+        export,
+        lambda d: all(
+            (d / n).is_file() for n in ("window_vv.tif", "window_vh.tif", "window_meta.json")
+        ),
     )
-    rows, cols = tr.rowcol(det.lon.to_numpy(), det.lat.to_numpy())
-    det["r"] = np.asarray(rows) - meta["vv"]["window"][1]
-    det["c"] = np.asarray(cols) - meta["vv"]["window"][0]
-    inwin = det[(det.r >= 0) & (det.r < a.size) & (det.c >= 0) & (det.c < a.size)]
-
-    fig, axes = plt.subplots(1, 2, figsize=(16, 8.4))
-    for ax, pol in zip(axes, ("vv", "vh"), strict=True):
-        db = 10 * np.log10(np.maximum(chips[pol], 1) ** 2)
-        ax.imshow(db, cmap="gray", vmin=np.percentile(db, 2), vmax=np.percentile(db, 99.7))
-        for cat, colr in COLOURS.items():
-            s = inwin[inwin.matched_category == cat]
-            ax.scatter(
-                s.c,
-                s.r,
-                s=60,
-                facecolors="none",
-                edgecolors=colr,
-                lw=1.2,
-                label=f"{cat} ({len(s)})",
-            )
-        ax.set_title(f"{pol.upper()} (DN→dB, display only)", fontsize=9)
+    ref = load_reference(DATA_DIR, a.scene, SCS)
+    detections = ref.predictions
+    if detections:
+        with GCPTransformer(points(grid)) as transform:
+            rows, cols = transform.rowcol([d.lon for d in detections], [d.lat for d in detections])
+        xy = [
+            (c - w.col, r - w.row, d.matched_category)
+            for c, r, d in zip(cols, rows, detections, strict=True)
+            if w.col <= c < w.right and w.row <= r < w.bottom
+        ]
+    else:
+        xy = []
+    fig, axes = plt.subplots(1, 2, figsize=(16, 8))
+    for ax, band, pixels in zip(axes, result.request.bands, chips, strict=True):
+        db = 20 * np.ma.log10(pixels.astype(float))
+        vals = db.compressed()
+        if vals.size:
+            ax.imshow(db, cmap="gray", vmin=np.percentile(vals, 2), vmax=np.percentile(vals, 99.7))
+        for category, colour in COLOURS.items():
+            pts = [(x, y) for x, y, cat in xy if cat == category]
+            if pts:
+                xs, ys = zip(*pts, strict=True)
+                ax.scatter(xs, ys, facecolors="none", edgecolors=colour, s=40, label=category)
+        ax.set_title(f"{band} log-amplitude display")
         ax.axis("off")
-    axes[0].legend(fontsize=8, loc="lower left")
-    fig.suptitle(
-        f"Feasibility: Planetary Computer window of {a.scene}\n"
-        f"acquired {item['properties']['datetime']} around {a.lat:.2f}N {a.lon:.2f}E  |  circles = "
-        "GFW SAR detections for this scene (GFW model output + GFW AIS matching; NOT ground truth, "
-        "NOT raw AIS)",
-        fontsize=9,
-    )
-    fig.tight_layout()
-    fig.savefig(FIGURES_DIR / "scs_reveal_feasibility.png", dpi=90)
+    if xy:
+        axes[0].legend()
+    fig.suptitle(f"{a.scene}\nGFW published predictions and matching ({ref.state})")
+    with staged_file(Path(a.figure)) as stage:
+        fig.savefig(stage, format="png", dpi=90)
+    plt.close(fig)
     print(
         json.dumps(
-            {
-                "pc_item": item["id"],
-                "datetime": item["properties"]["datetime"],
-                "meta": meta,
-                "gfw_detections_in_scene": len(det),
-                "gfw_detections_in_window": len(inwin),
-                "in_window_by_category": inwin.matched_category.value_counts().to_dict(),
-            },
-            indent=1,
+            dict(
+                export=str(out),
+                reference_state=ref.state,
+                published_detections_in_window=len(xy),
+                raster=meta,
+            ),
+            indent=2,
         )
     )
 

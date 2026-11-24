@@ -1,0 +1,8 @@
+version = 1
+# Online permission applies to Planetary Computer catalogue and measurement reads.
+online = false
+raster_priority = ["xview3", "pc-crop", "pc-cog"]
+# Positions and published predictions are optional inputs to a scene review.
+required_layers = ["imagery"]
+# Named private exports are read offline. An absent export is reported as unavailable.
+lseg_runs = ["probe_20261123T170033Z"]

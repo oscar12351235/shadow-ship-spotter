@@ -23,13 +23,19 @@ import zipfile
 import pandas as pd
 import polars as pl
 
+from shadow_ship_spotter.data.download import file_hash
+from shadow_ship_spotter.data.reference import ARCHIVE_MD5, SCS, write_reference
+from shadow_ship_spotter.data.storage import staged_file
 from shadow_ship_spotter.paths import INVENTORY_DIR, PROCESSED_DIR, RAW_DIR
 
 ZIP = RAW_DIR / "gfw_paolo2024" / "analysis" / "industrial_vessels_v20240102.csv.zip"
-SCS_BOX = (105.0, 0.0, 122.0, 25.0)  # lon_min, lat_min, lon_max, lat_max (rough, includes coasts)
+SCS_BOX = SCS.xyxy
 
 
 def main() -> None:
+    digest = file_hash(ZIP, "md5")
+    if digest != ARCHIVE_MD5:
+        raise ValueError("input differs from the pinned GFW analysis release")
     with zipfile.ZipFile(ZIP) as zf:
         members = [m for m in zf.infolist() if m.filename.endswith(".csv")]
         assert len(members) == 1, members
@@ -53,7 +59,7 @@ def main() -> None:
     scs = pd.concat(parts, ignore_index=True)
     scs["timestamp"] = pd.to_datetime(scs.timestamp, utc=True, format="mixed")
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    pl.from_pandas(scs).write_parquet(PROCESSED_DIR / "gfw_sar_detections_scs.parquet")
+    write_reference(PROCESSED_DIR / "gfw_sar_detections_scs.parquet", pl.from_pandas(scs), digest)
 
     g = scs.groupby("scene_id")
     scenes = g.agg(
@@ -80,7 +86,8 @@ def main() -> None:
         .values
     )
     INVENTORY_DIR.mkdir(parents=True, exist_ok=True)
-    scenes.to_csv(INVENTORY_DIR / "gfw_sar_scs_scenes.csv", index=False)
+    with staged_file(INVENTORY_DIR / "gfw_sar_scs_scenes.csv") as stage:
+        scenes.to_csv(stage, index=False)
 
     summary = {
         "source": f"{ZIP.name} / {member.filename}",
@@ -106,9 +113,8 @@ def main() -> None:
         .astype(str)
         .to_dict("records"),
     }
-    (INVENTORY_DIR / "gfw_sar_detections_summary.json").write_text(
-        json.dumps(summary, indent=2, default=str)
-    )
+    with staged_file(INVENTORY_DIR / "gfw_sar_detections_summary.json") as stage:
+        stage.write_text(json.dumps(summary, indent=2, default=str))
     print(
         json.dumps(
             {k: v for k, v in summary.items() if k != "scs_top_scenes_by_unmatched"},

@@ -21,7 +21,8 @@ import sys
 import tarfile
 from pathlib import Path
 
-from shadow_ship_spotter.data.download import download, file_hash
+from shadow_ship_spotter.data.download import download
+from shadow_ship_spotter.data.storage import publish_directory
 from shadow_ship_spotter.paths import RAW_DIR
 
 XVIEW3_DIR = RAW_DIR / "xview3"
@@ -48,7 +49,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--list", required=True, help="link list file name inside data/raw/xview3/")
     ap.add_argument("--scenes", nargs="+", required=True)
-    ap.add_argument("--keep-archives", action="store_true")
+    ap.add_argument(
+        "--keep-archives",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="retain verified raw archives (default)",
+    )
     args = ap.parse_args()
 
     links = parse_aria2_list(XVIEW3_DIR / args.list)
@@ -58,22 +64,36 @@ def main() -> None:
     for sid in args.scenes:
         url, sha1 = links[sid]
         out_dir = XVIEW3_DIR / "scenes" / sid
-        if out_dir.exists() and any(out_dir.iterdir()):
+
+        def complete(root: Path, scene: str = sid) -> bool:
+            d = root / scene if (root / scene).is_dir() else root
+            return all(
+                (d / name).is_file() and (d / name).stat().st_size > 0
+                for name in (
+                    "VV_dB.tif",
+                    "VH_dB.tif",
+                    "bathymetry.tif",
+                    "owiMask.tif",
+                    "owiWindSpeed.tif",
+                    "owiWindDirection.tif",
+                    "owiWindQuality.tif",
+                )
+            )
+
+        if out_dir.exists() and complete(out_dir):
             print(f"[{sid}] already extracted, skipping", file=sys.stderr)
             continue
         archive = XVIEW3_DIR / "archives" / f"{sid}.tar.gz"
         print(f"[{sid}] downloading", file=sys.stderr)
-        download(url, archive)
-        digest = file_hash(archive, "sha1")
-        if sha1 and digest != sha1:
-            archive.rename(archive.with_suffix(".corrupt"))
-            sys.exit(f"[{sid}] SHA-1 mismatch: {digest} != {sha1}")
-        print(f"[{sid}] SHA-1 OK ({digest}); extracting", file=sys.stderr)
-        out_dir.mkdir(parents=True, exist_ok=True)
+        if not sha1 or not re.fullmatch(r"[0-9a-f]{40}", sha1):
+            sys.exit(f"[{sid}] missing or invalid publisher SHA-1")
+        download(url, archive, checksum=("sha1", sha1))
         with tarfile.open(archive) as tf:
-            tf.extractall(out_dir, filter="data")
+            publish_directory(
+                out_dir, lambda stage, tf=tf: tf.extractall(stage, filter="data"), complete
+            )
         if not args.keep_archives:
-            archive.unlink()
+            archive.unlink(missing_ok=True)
         print(f"[{sid}] done -> {out_dir}", file=sys.stderr)
 
 

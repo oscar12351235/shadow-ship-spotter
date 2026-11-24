@@ -16,7 +16,33 @@
 > **Usefulness verdicts for data sources:** **Essential** (the project depends on it) ·
 > **Useful** · **Limited** (narrow use, or major caveats) · **Not useful now**.
 
-_Last updated: 2026-11-23, after step 2 (data foundation) and the LSEG/Eikon AIS investigation._
+_Updated 2026-11-24. Sections 14–15 preserve the history of the original acquisition work._
+
+The data layer now serves two working entry points. Training reads pinned local samples for
+both model families. Scene review selects a real acquisition by UTC date and WGS84 area,
+then returns a georeferenced preview, position-query coverage and a published comparison.
+The source inventory, enforced compatibility matrix, GSRAI comparison, configuration and
+reproduction commands are in the [data-layer guide](docs/data_layer.md).
+
+The pinned training reader has opened all three families. Lagos, the Adriatic and the North
+Sea are separate xView3 train, validation and test scenes. They contain 722, 506 and 1,079
+annotations in total. The default manually reviewed product contains 715, 489 and 1,076
+respectively. The other 27 have AIS-only provenance and can be requested separately.
+GFW has 8,820 / 1,533 / 1,612 tiles under the shared datatake grouping rule. All 1,160
+SSDD crops with unknown parent scenes form a separate benchmark.
+
+The historical Hainan study returned two 80 × 80 raw-DN windows and 231 WGS84 parent
+control points. Both windows replayed offline with their original retrieval receipts.
+The viewport contained six GFW predictions and zero selected LSEG reports in the acquisition
+interval expanded by 30 minutes on each side. The North Sea test returned eight selected
+report variants. Population coverage remains unknown in both areas. The project has no
+evaluated SCS detector or matching result.
+
+Public checks confirmed both Figshare release MD5s, the PC measurement parent and one exact
+CDSE SAFE catalogue record. The local GFW analysis ZIP and six original xView3 files passed
+their publisher checksums. The Workspace app key was configured and the desktop proxy
+was unreachable. CDSE pixel equivalence, historical area AIS entitlement, receiver coverage
+and licensed display rights still require separate evidence.
 
 **Contents:**
 1. The project in brief
@@ -42,9 +68,8 @@ _Last updated: 2026-11-23, after step 2 (data foundation) and the LSEG/Eikon AIS
 This is a university machine-learning project, intended to become a working application.
 
 **The idea.** A ship at sea can be observed in two independent ways:
-- **Satellite radar images** (Sentinel-1 *SAR*). Radar works through cloud and at night, and a
-  metal hull shows up as a bright dot on darker water. Every vessel large enough to be resolved
-  appears, whether or not it wants to be seen.
+- **Satellite radar images** (Sentinel-1 *SAR*). Radar works through cloud and at night.
+  Vessel visibility depends on size, material, aspect, sea conditions and resolution.
 - **AIS** (*Automatic Identification System*). These are radio messages in which ships report
   their own identity and position. A ship appears only if it carries a transponder, has it
   switched on, and is within range of a receiver.
@@ -133,7 +158,9 @@ detection.
 | Step 1: project scope | ✅ done before this file existed |
 | Step 2: data acquisition, validation and a reproducible repo foundation | ✅ done (2026-11-23) |
 | Investigation of LSEG Workspace/Eikon as an AIS source | ✅ done (2026-11-23) |
-| Step 3: data splits, extracting image patches ("chips"), CFAR baseline | 📋 next |
+| Fixed split manifests and on-demand training chips | ✅ three local data families |
+| Historical scene discovery, bounded inputs and offline replay | ✅ Python API, CLI and preview script |
+| CFAR baseline | 📋 next |
 | Model training (descriptors vs CNN) | 📋 not started |
 | Matching code | 📋 not started; rules drafted |
 | Backend and frontend application | 📋 not started |
@@ -143,31 +170,26 @@ detection.
   SSDD, and the GFW detection tiles.
 - A proven, account-free way to fetch real SCS satellite images (Microsoft Planetary Computer).
 - A comparison layer for the SCS: GFW's AIS-matched satellite detections, 2017–2021.
-- A tested but limited AIS source: LSEG Workspace, usable for recent dates only.
-- Scripts that download, verify and validate every dataset, plus inventories, documentation and
-  19 passing unit tests.
-
-**What does not exist yet:** any model, detector, data split, matching code, backend or frontend.
-`run.py` and `src/shadow_ship_spotter/core.py` are still placeholders from the initial template.
+- Selected historical LSEG reports and dated Search exports, available offline in this checkout.
+- A product-specific resolver and preview interface in `run.py`. The trained detector, matching
+  algorithm, HTTP backend and map UI remain future work.
 
 **Most important findings so far:**
-1. **xView3 is the right core dataset**: same satellite and product as the application, full
-   scenes, human-reviewed labels. But it does not cover the SCS, and small fishing boats are faint.
+1. **xView3 supplies projected, calibrated training imagery** from Europe and West Africa.
+   The SCS application currently retrieves raw radar-grid DN, with different processing.
 2. **SSDD's official train/test split leaks** (duplicate images on both sides), so it is a
-   benchmark only, with our own duplicate-aware split.
+   separate benchmark in the current manifest.
 3. **Fetching SCS imagery works anonymously** (Planetary Computer, about 10 s for a 30 km window).
    The pixels need calibration before a model trained on xView3 can use them.
 4. **There is no complete AIS source for the SCS at image times yet.** The biggest open problem:
-   - GFW's table shows only what GFW detected *and* matched.
-   - LSEG gives a dense but partial commercial-fleet layer for recent dates only.
+   - GFW's table contains its detections and matching outcomes, including unmatched predictions.
+   - LSEG provided selected-vessel history and a dated, capped Search interface.
    - A GFW API token has not been requested yet.
 5. **SCS AIS coverage before ~2022 was poor.** High "unmatched" rates there are partly a coverage
    effect, not hidden vessels.
 
-**Git state:**
-- Branch `step2-data-foundation` holds one commit, `8e24e7b` (step 2), not pushed. The remote is
-  `origin` on GitHub.
-- As of 2026-11-23, the LSEG work and this documentation rewrite are not yet committed.
+**Git state at this assessment.** The checkout started on `main` at `3365809`. The previous
+foundation was merged in PR #1. The data-layer implementation is in the working tree.
 - **Commit rule:** no AI co-author or attribution lines, and commit only for significant changes.
 
 ---
@@ -185,10 +207,10 @@ Everything downloaded lives under `data/raw/` (≈ 16 GB) and `data/processed/` 
 | **xView3-SAR** | Full Sentinel-1 radar scenes from 2020 (Europe, West Africa) with labelled vessels | A | **Essential** | ✅ labels + 3 scenes downloaded and validated |
 | **SSDD** | 1,160 small radar image chips with ship boxes, no location or date | A (benchmark) | **Limited** | ✅ downloaded and validated |
 | **GFW detection tiles** | 11,965 small Sentinel-1 patches labelled vessel / not vessel | A (classifier) | **Useful** | ✅ downloaded and validated |
-| **GFW SAR vessel detections 2017–2021** | 23 M vessel detections made by GFW's models, with GFW's AIS matching | B/C2 stand-in, choosing demo scenes | **Useful** (if labelled correctly) | ✅ downloaded; SCS subset extracted |
+| **GFW SAR vessel detections 2017–2021** | 23 M model predictions with GFW's own matching | Separate published comparison, scene selection | **Useful** | ✅ local SCS Parquet |
 | **Planetary Computer Sentinel-1 GRD** | Free online archive of Sentinel-1 images, readable without an account | C1 | **Essential** | ✅ access proven |
-| **CDSE** | The official ESA/Copernicus Sentinel archive | C1 (backup), date selector | **Useful** | ✅ catalogue / 📍 download needs account |
-| **LSEG Workspace (Eikon)** | Commercial vessel-tracking data from our Workspace licence | B and C2, recent dates only | **Limited** | ✅ tested with real calls |
+| **CDSE** | The official ESA/Copernicus Sentinel archive | C1 discovery, candidate imagery source | **Useful** | ✅ exact catalogue hit, pixel compatibility unverified |
+| **LSEG Workspace (Eikon)** | Selected-vessel historical reports and latest-location snapshots | B and C2 within the sampled identifiers and times | **Limited** | ✅ prior licensed exports loaded offline |
 | **LSEG Vessel Tracking API** | Separate LSEG product: last 24 h of positions | B (live) | **Not useful now** | 📍 no key |
 | **GFW API** | GFW's online API: AIS-derived products, SAR detections, vessel identity | B and C2 for the SCS | **Probably useful** ❓ | 📍 token not requested |
 | **DMA raw AIS** | Raw AIS messages from Danish waters | C2 for validating matching | **Useful** (validation) | 📍 not downloaded |
@@ -203,12 +225,12 @@ Everything downloaded lives under `data/raw/` (≈ 16 GB) and `data/processed/` 
   - SSDD is a literature benchmark.
 - **B (initial AIS map): no complete source for the SCS.**
   - LSEG gives a partial layer for recent dates.
-  - The GFW detections table is a labelled stand-in for historical scenes.
+  - The GFW detections table supplies a separate historical comparison layer.
   - The GFW API is untested.
-- **C1 (imagery): covered** by Planetary Computer, with CDSE as backup.
+- **C1 (imagery):** verified Planetary Computer native-DN reads. CDSE pixel fallback is disabled pending compatibility evidence.
 - **C2 (AIS at image time):**
   - Covered only partially for recent images (LSEG).
-  - Covered for Danish waters (DMA raw AIS).
+  - The Danish DMA archive is a candidate for a separate regional study. No DMA data was loaded here.
   - **Historical SCS AIS is a gap.**
 
 ### 5.1 xView3-SAR — **Essential** (Need A)
@@ -444,7 +466,7 @@ Caveats:
 Proof figure: `docs/figures/scs_reveal_feasibility.png`, with GFW's detections for the same image
 overlaid.
 
-### 5.6 Copernicus Data Space Ecosystem (CDSE) — **Useful** (backup for C1)
+### 5.6 Copernicus Data Space Ecosystem (CDSE) — catalogue and candidate C1 source
 
 **What it is.** The official European portal for all Sentinel data.
 
@@ -452,16 +474,17 @@ overlaid.
 each).
 
 **What we can use it for:**
-- An authoritative backup source of imagery.
+- An authoritative catalogue for checking the exact SAFE identity.
 - Footprints and acquisition times for the date selector.
 
-**Is it useful?** **Useful**, as a backup.
+The historical Hainan SAFE has one exact catalogue match. Pixel substitution requires a
+compatible measured asset and native-grid evidence.
 - The catalogue works anonymously. Measured coverage for Sep–Oct 2025 was about 6–9 acquisitions in
   open-SCS boxes and ≥50 in the Gulf of Tonkin. The open SCS is revisited roughly every 6–12 days.
 - Downloads need a free account and an OAuth token, neither of which has been set up or tested.
 - Nothing was downloaded.
 
-### 5.7 LSEG Workspace (Eikon) vessel data — **Limited** (Needs B and C2, recent dates only)
+### 5.7 LSEG Workspace (Eikon) vessel data — selected historical and recent reports
 
 **What it is.** The vessel-tracking data in our LSEG Workspace licence, accessed with the LSEG Data
 Library for Python through a *desktop session*. The Workspace desktop app must be running and
@@ -579,7 +602,7 @@ shadow-ship-spotter/
 ├── README.md, context.md          project intro / this complete context file
 ├── pyproject.toml, uv.lock        dependencies + tool settings (uv)
 ├── install.sh, install.bat        one-command setup (macOS/Linux, Windows)
-├── run.py                         placeholder entry point (template)
+├── run.py                         training, scenes, raster windows and dated scene review
 ├── .gitignore, .env.example       ignore rules / names of local secrets (no values)
 ├── src/shadow_ship_spotter/       the Python package (importable code)
 ├── scripts/                       runnable steps: download, validate, probe
@@ -598,7 +621,7 @@ shadow-ship-spotter/
 | `pyproject.toml` | Project metadata, dependencies, tool configuration (black, ruff, mypy, pytest) | Main dependencies: numpy, pandas, polars, pydantic, matplotlib, scipy, seaborn, rasterio, zarr, pyarrow. Groups: `dev` (pytest, black, ipykernel), `lint` (ruff, mypy), `lseg` (lseg-data) |
 | `uv.lock` | Exact locked versions, for reproducible installs | Generated by uv; commit with dependency changes |
 | `install.sh` / `install.bat` | Run `uv sync --python 3.12 --all-groups` | Requires uv |
-| `run.py` | Template placeholder that prints a demo table | To be replaced by the application entry point |
+| `run.py` and `__main__.py` | Invoke the package data CLI | Same commands and validation from either entry point |
 | `.gitignore` | Keeps `data/raw/`, `data/processed/`, `*.part`, `.env` and caches out of Git | |
 | `.env.example` | Names of local secrets: `EIKON_APP_KEY`, `VESSEL_TRACKING_API_KEY` | Copy to `.env` (git-ignored) and fill in locally |
 
@@ -612,6 +635,11 @@ shadow-ship-spotter/
 | `data/download.py` | Standard-library downloader: resumable HTTP downloads, Google Drive large-file handling, SHA-256/MD5/SHA-1 verification |
 | `data/ssdd.py` | SSDD readers (COCO JSON, VOC XML, split lists), box overlap (IoU) and matching, image hashing for duplicate detection |
 | `data/lseg.py` | LSEG helpers: verified field lists, local Workspace proxy discovery, error classification, response parsing, timestamp and coordinate validation, nearest-report and interpolation, search filters |
+| `data/contracts.py`, `compatibility.py` | Immutable requests, UTC intervals, WGS84 bounds, native windows, statuses, revisions and directional product rules |
+| `data/catalog.py`, `imagery.py`, `geo.py` | Date/area discovery, checked raster routes, GCP/affine transformations and per-band window completion |
+| `data/http.py`, `storage.py` | Bounded transfers, transactional window cache, integrity checks and atomic publication |
+| `data/observations.py`, `search_exports.py`, `reference.py` | Position observations, registry candidates and published predictions with separate provenance and coverage |
+| `data/training.py`, `study.py`, `cli.py` | Fixed sample assembly, historical scene preparation and command-line consumers |
 
 **Scripts `scripts/`.** Run from the repository root with `uv run python -I scripts/<name>.py`. The
 `-I` flag stops downloaded files from shadowing Python modules.
@@ -625,16 +653,20 @@ shadow-ship-spotter/
 | `download_gfw_paolo2024.py` | Downloads GFW's figshare files and checks MD5 (`--with-detections` adds the 1.7 GB table) | Internet | `data/raw/gfw_paolo2024/` |
 | `validate_gfw_tiles.py` | Checks the GFW tiles and parses scene and time from ids; draws a gallery | GFW tiles | `data/inventory/gfw_detection_tiles*`, `docs/figures/gfw_detection_tiles.png` |
 | `summarise_gfw_sar_detections.py` | Scans the 23 M-row GFW table, extracts the SCS subset, counts per scene | GFW table | `data/processed/gfw_sar_detections_scs.parquet`, `data/inventory/gfw_sar_*` |
-| `fetch_pc_s1_window.py` | Reads a window of a Sentinel-1 scene from Planetary Computer and overlays GFW detections | Internet | `data/raw/planetary_computer/`, `docs/figures/scs_reveal_feasibility.png` |
+| `fetch_pc_s1_window.py` | Exports a native PC window with shifted GCPs and an optional published overlay | Cached window or PC access | `data/processed/pc_windows/`, configurable figure |
+| `check_source_access.py` | Opt-in small Figshare, PC, CDSE and Workspace access checks | Network or local desktop for the relevant check | Redacted JSON to stdout |
 | `probe_lseg_shipping.py` | Bounded test of LSEG vessel data: fields, identifiers, history at our scene times, area search, fishing coverage, limits | Workspace running + `EIKON_APP_KEY` | `data/raw/lseg/probe_<UTC>/` (licensed, git-ignored) |
 
-**Tests `tests/`.** Run with `uv run pytest`; 19 tests pass.
+**Tests.** Run the credential-independent suite with `uv run pytest`.
 
 | File | Covers |
 |---|---|
 | `test_smoke.py` | The template placeholder |
+| `test_raster_resolver.py` | Product selection, uncovered rectangles, cache recovery, parent grids, invalid requests and policy |
+| `test_storage_transport.py` | Retry/entitlement handling, interrupted publication, concurrent cache access and corrupted bytes |
+| `test_study_inputs.py` | Scene, position, registry and prediction inputs, empty/partial response semantics, split and CLI integration |
 | `test_data_helpers.py` (6) | IoU, box matching, VOC parsing, checksum verification, xView3 link-list parsing |
-| `test_lseg_helpers.py` (13) | `.env` parsing, LSEG error classes, response parsing, timestamp validation, interpolation, geometry and filters (no network) |
+| `test_lseg_helpers.py` | Environment parsing, error classes, response parsing, timestamps, bounded interpolation, geometry and filters |
 
 **Notebook.** `notebooks/01_data_inspection.ipynb` reads the inventories (it works without raw
 data) and, when raw data is present, shows:
@@ -649,6 +681,7 @@ It runs cleanly from top to bottom.
 | File | What it explains |
 |---|---|
 | `data_sources.md` | Every source: what it is, contents, use, usefulness, access mechanics, licence, citations |
+| `data_layer.md` | Current source inventory, enforced compatibility matrix, architecture decision, verified runs and operating examples |
 | `validation_results.md` | What was checked on each dataset, the actual numbers, and what they imply |
 | `map_reveal_data_assessment.md` | What the map and "Reveal" interaction need step by step; realistic demo routes; draft matching rules |
 | `lseg_shipping_access_assessment.md` | Evidence from the LSEG Workspace investigation |
@@ -674,7 +707,8 @@ full layout and commands.
 | `inventory/gfw_detection_tiles_validation.json` | ✅ | GFW tile check results |
 | `inventory/gfw_sar_scs_scenes.csv` | ✅ | One row per SCS scene: GFW detection counts by match category, used to pick demo scenes |
 | `inventory/gfw_sar_detections_summary.json` | ✅ | Global and SCS summary of the GFW detections table |
-| `splits/README.md` | ✅ | Rules any future split must follow. No split exists yet |
+| `splits/training-v1.json`, `splits/README.md` | ✅ | Pilot partition policy, pinned inputs and evaluation constraints |
+| `loading.toml` | ✅ | Validated raster priority, named position exports, online mode and required layers |
 | `raw/` | ❌ ignored | Original downloads and extracted archives (§5), plus LSEG samples |
 | `processed/ssdd_overlays/` | ❌ | 52 per-image SSDD overlay PNGs |
 | `processed/xview3_labels_downloaded.csv` | ❌ | Row-level xView3 labels of the 3 scenes with our checks (never commit: licence) |
@@ -685,7 +719,7 @@ full layout and commands.
 
 ```bash
 ./install.sh                     # or install.bat on Windows; needs uv
-uv run pytest                    # 19 tests
+uv run pytest
 uv run ruff check . && uv run black --check . && uv run mypy src
 ```
 
@@ -774,7 +808,7 @@ Actual results are in `docs/validation_results.md` and `docs/lseg_shipping_acces
 
 **Data and radiometry:**
 - **AIS for the SCS at image times** (the main blocker). GFW API token not requested; point-level
-  tracks unconfirmed; LSEG covers recent dates only and is incomplete.
+  tracks unconfirmed. LSEG has sparse selected-identifier history and unknown area reception.
 - How "insufficient AIS information" will be measured, e.g. AIS message density nearby in the same
   hour.
 - Planetary Computer pixels are uncalibrated and in radar geometry. Calibration and geolocation
@@ -799,16 +833,14 @@ Actual results are in `docs/validation_results.md` and `docs/lseg_shipping_acces
    - Review more xView3 chips per class and confidence.
    - Decide how to handle SSDD's false-colour images.
    - Manually review SSDD near-duplicate clusters.
-2. **Splits** (step 3):
-   - SSDD duplicate clusters → `data/splits/ssdd_groups.csv` and a versioned split.
-   - xView3 split by scene. Decide whether to fetch more validation or train scenes while the
-     links are valid.
-   - GFW tiles grouped by scene.
+2. **Extend evaluation coverage.** Acquire additional reviewed xView3 scenes and SCS labels
+   under the relevant terms. Publish a new manifest for any changed split. Using SSDD for
+   internal training would first require manual resolution of overlapping or duplicate crops.
 3. **Pipeline foundations:**
    - Extract chips from xView3: positives from labels, negatives from sea areas away from labels.
    - CFAR baseline on the dB rasters, with land masking from bathymetry/`owiMask`.
 4. **Map and reveal:**
-   - Build a Planetary Computer scene index for a chosen SCS area and date range.
+   - Connect the date/area selector to the verified discovery and study interfaces.
    - Choose demo scene(s) from `gfw_sar_scs_scenes.csv`, preferring later dates with better AIS.
    - Implement σ⁰ calibration for Planetary Computer data.
    - Request a GFW API token.
@@ -1037,3 +1069,27 @@ Statements marked ❓ come from general background knowledge, not something we v
   - Verdict: recent dates only, as an incomplete commercial-fleet layer.
 - 2026-11-23: Restructured `context.md` (each source: contents, use, usefulness; every repository
   file explained; current status up front) and aligned the other docs.
+- 2026-11-24. Audited the source registry, original data, probe receipts, notebooks and actual
+  GSRAI loader families. Implemented separate catalogue, raster, training, position, registry
+  and prediction readers. Only verified raster substitutes may complete missing bands or
+  windows. The source and compatibility tables are in [the architecture guide](docs/data_layer.md).
+- 2026-11-24. Added `data/loading.toml`, the pinned pilot manifest and the package CLI.
+  Migrated the notebook, PC preview, LSEG lookup and GFW extraction. Updated the archive
+  downloaders, transport, storage, READMEs, source registry and map assessment. Shapely is
+  the added direct dependency. CSV and manifest Git attributes preserve pinned bytes across
+  operating systems.
+- 2026-11-24. Verified all training families and the explicit weak-label product. Both pre-existing
+  GFW whole-scene extracts agreed with the publisher CSV on all seven lookup fields. In an
+  80 × 80 overlap the stored Hainan crop and PC range read agreed in all 6,400 native samples
+  for each band. Saved separate SHA-256 pins for the VV and VH crops. A fresh temporary
+  checkout fetched the georeferenced windows, then replayed them using only its cache.
+- 2026-11-24. The requested North Sea zone had partial raster coverage, a complete two-band
+  preview and eight selected position reports. Hainan had six published predictions and an
+  empty position query. Both studies returned insufficient AIS information. Required next
+  evidence includes validated SCS radiometry, independent evaluation and entitled historical
+  position observations with a defensible reception estimate.
+- 2026-11-24. All 79 credential-independent tests passed. Ruff, Black for 39 Python files,
+  mypy for 22 package files, the offline uv lock check and the whitespace check passed.
+  The six inspection notebook code cells ran with local imagery and again using inventories
+  only. The SSDD archive passed its recorded SHA-256. Live metadata rechecks confirmed
+  Figshare, PC and the CDSE catalogue. The Workspace desktop proxy was unavailable.

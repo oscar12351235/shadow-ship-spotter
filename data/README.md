@@ -3,14 +3,14 @@
 This folder holds everything the project knows about its data:
 - a registry of every source;
 - small machine-readable inventories produced by our validation scripts;
-- (in the future) the train/validation/test splits;
+- the pinned pilot training manifest and partition policy;
 - the large raw and processed files, which are git-ignored.
 
 What each *source* is and whether it is useful is explained in `context.md` §5 and
 `docs/data_sources.md`. This file explains the **folders and files**, and **how to recreate them**.
 
 **What is in Git and what is not:**
-- **Tracked (small):** this README, `sources.json`, `inventory/`, `splits/`.
+- **Tracked (small):** this README, `sources.json`, `loading.toml`, `inventory/`, `splits/`.
 - **Never committed:** `raw/` and `processed/`. They are large, and several sources (xView3,
   LSEG) forbid redistribution.
 
@@ -21,7 +21,8 @@ data/
 ├── sources.json     Registry of every data source: URL, licence, citation, size, checksum,
 │                    download date, status, and the command that reproduces it.
 ├── inventory/       Inventories and check results written by scripts/validate_*.py (tracked).
-├── splits/          Future partition files. None exist yet; README.md lists the rules.
+├── loading.toml     Offline-default provider order, required inputs and pinned Workspace runs.
+├── splits/          training-v1.json pins inputs, partition assignments and seed.
 ├── raw/             Original downloads and extracted archives (git-ignored, ≈ 16 GB)
 │   ├── ssdd/
 │   │   ├── download/Official-SSDD-OPEN.rar      original 1 GB archive (SHA-256 in sources.json)
@@ -61,6 +62,8 @@ data/
 │       │                                         request log
 │       └── assessment_latest.json                copy of the latest run's assessment
 └── processed/       Files generated from raw data (git-ignored, ≈ 70 MB)
+    ├── cache/pc-windows.sqlite3          verified native windows, GCPs and receipts
+    ├── pc_windows/<ESA>/<window>/        georeferenced TIFF exports from the preview script
     ├── ssdd_overlays/*.png              52 SSDD images with COCO (green) / VOC (red) boxes
     ├── xview3_labels_downloaded.csv     row-level xView3 labels of the 3 scenes with our checks
     │                                    (never commit: licence)
@@ -88,6 +91,10 @@ by the notebook.
 | `gfw_sar_detections_summary.json` | — | Global and SCS summary of the GFW detections table | Context numbers |
 
 ## Reproduce
+
+Use the [data-layer guide](../docs/data_layer.md) to assemble samples and review a dated scene
+after acquisition. The original `raw/planetary_computer` crop is preserved. New preview exports
+use acquisition and window identities under `processed/pc_windows`.
 
 Run these from the repository root, after `./install.sh` or `install.bat`.
 

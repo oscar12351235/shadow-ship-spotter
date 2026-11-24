@@ -2,6 +2,9 @@
 
 _Status verified on 2026-11-23._
 
+The [2026-11-24 audit and product matrix](data_layer.md) records the latest live checks and
+specifies which of these sources the implemented data layer can use.
+
 **How this file relates to the others:**
 - `context.md` §5 has the same per-source summary in the context of the whole project.
 - This file adds **access mechanics, licences, technical details and citations**.
@@ -15,7 +18,7 @@ _Status verified on 2026-11-23._
 | Need | What it means | Sources that meet it |
 |---|---|---|
 | **A. Training and evaluation** | Radar images with labelled vessels | xView3-SAR ✅ (primary), GFW detection tiles ✅ (classifier stage), SSDD ✅ (benchmark only) |
-| **B. Initial AIS map** | Vessel positions with timestamps for the chosen area and moment | No complete SCS source yet. LSEG Workspace ✅ (recent dates, partial); GFW API 📍 (token); GFW detections table ✅ (stand-in: only AIS-matched detections) |
+| **B. Initial AIS map** | Vessel positions with timestamps for the chosen area and moment | No complete SCS source verified. LSEG Workspace provides a licensed sample. GFW point-level API entitlement is unverified. Published GFW detections have a separate comparison layer. |
 | **C. Reveal** | C1: the Sentinel-1 image and its acquisition time. C2: AIS close to that time for matching | C1: Planetary Computer ✅, CDSE ✅/📍. C2: LSEG (recent, partial) ✅, DMA raw AIS (Danish waters) 📍, GFW table as comparison ✅ |
 
 ✅ downloaded and validated, or access proven by an actual read · 📍 located, access route
@@ -230,17 +233,17 @@ non-vessel) on real Sentinel-1 data with true negatives.
 - Newer data (2017 → about 5 days ago) is on the GFW Data Download Portal
   (`public-sar-vessel-detections:v20231026`, login and terms).
 
-## 5. Copernicus Data Space Ecosystem (CDSE) — **Useful** (backup for C1) — ✅ catalogue / 📍 download
+## 5. Copernicus Data Space Ecosystem (CDSE) — verified catalogue, candidate C1 imagery source
 
 **What it is:** the official European archive of all Sentinel products.
 
 **What it contains:** every Sentinel-1 product, in both SAFE and `_COG.SAFE` form. The historical SCS
 scenes cited by GFW (2017–2019) are online, 1.7–2.0 GB SAFE each.
 
-**What we can use it for:** an authoritative backup for imagery, footprints and acquisition times
-(for the date selector).
+The catalogue supplies product identity, footprints and acquisition times. Download entitlement,
+calibration and grid compatibility must be verified before CDSE can supply pixels in this project.
 
-**Is it useful?** **Useful** as a backup. The catalogue works anonymously, e.g.
+The catalogue works anonymously at
 `catalogue.dataspace.copernicus.eu/odata/v1/Products`.
 
 Measured SCS coverage for Sep–Oct 2025 GRDH (unique acquisitions ≈ half the listed products):
@@ -290,7 +293,7 @@ and building the date selector.
 **Access:** an anonymous SAS token from
 `https://planetarycomputer.microsoft.com/api/sas/v1/token/sentinel-1-grd`.
 
-## 7. LSEG Workspace (Eikon) vessel data — **Limited** (Needs B and C2, recent dates only) — ✅ tested
+## 7. LSEG Workspace (Eikon) — selected historical reports and recent snapshots
 
 **What it is.** The vessel data in our LSEG Workspace licence, read with the LSEG Data Library for
 Python (`lseg-data` 2.1.1) through a desktop session. **The Workspace desktop app must be running

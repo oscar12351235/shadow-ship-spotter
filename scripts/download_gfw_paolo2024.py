@@ -21,25 +21,18 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import urllib.request
 import zipfile
+from pathlib import Path
 
-from shadow_ship_spotter.data.download import USER_AGENT, download, file_hash
-from shadow_ship_spotter.paths import RAW_DIR
+from shadow_ship_spotter.data.download import download
+from shadow_ship_spotter.data.storage import publish_directory, write_json
+from shadow_ship_spotter.paths import RAW_DIR, SOURCES_FILE
 
 RECORDS = {"training": 24309469, "analysis": 24309475}
 DEFAULT = {"training": ["README.md", "detection_tiles.zip"], "analysis": ["README.md"]}
 DETECTIONS = "industrial_vessels_v20240102.csv.zip"
 EXTRACT = {"detection_tiles.zip"}
 OUT = RAW_DIR / "gfw_paolo2024"
-
-
-def record_files(article: int) -> dict[str, dict]:
-    req = urllib.request.Request(
-        f"https://api.figshare.com/v2/articles/{article}", headers={"User-Agent": USER_AGENT}
-    )
-    meta = json.load(urllib.request.urlopen(req, timeout=60))  # noqa: S310
-    return {f["name"]: f for f in meta["files"]}
 
 
 def main() -> None:
@@ -50,40 +43,62 @@ def main() -> None:
     if args.with_detections:
         wanted["analysis"].append(DETECTIONS)
 
+    registry = json.loads(SOURCES_FILE.read_text())
     manifest = []
+    verified = 0
     for rec, names in wanted.items():
-        files = record_files(RECORDS[rec])
-        for name in names:
-            f = files[name]
+        release = registry[f"gfw_paolo2024_{rec}"]
+        for name, f in release["files"].items():
             dest = OUT / rec / name
-            print(f"[{rec}] {name} ({f['size'] / 1e6:.1f} MB)", file=sys.stderr)
-            download(f["download_url"], dest, expected_size=f["size"])
-            md5 = file_hash(dest, "md5")
-            if md5 != f["computed_md5"]:
-                sys.exit(f"MD5 mismatch for {dest}: {md5} != {f['computed_md5']}")
+            # Keep records for previously installed optional assets in the manifest.
+            if name not in names and not dest.is_file():
+                continue
+            md5 = f["md5"]
+            url = f"https://ndownloader.figshare.com/files/{f['file_id']}"
+            if name in names:
+                print(f"[{rec}] {name} ({f['bytes'] / 1e6:.1f} MB)", file=sys.stderr)
+                download(url, dest, expected_size=f["bytes"], checksum=("md5", md5))
+                verified += 1
             manifest.append(
                 {
                     "record": rec,
                     "article": RECORDS[rec],
                     "file": name,
-                    "file_id": f["id"],
-                    "size_bytes": f["size"],
+                    "file_id": f["file_id"],
+                    "article_version": release["article_version"],
+                    "size_bytes": f["bytes"],
                     "md5": md5,
-                    "url": f["download_url"],
+                    "validation": "verified" if name in names else "installed_not_rechecked",
+                    "url": url,
                 }
             )
-            if name in EXTRACT:
+            if name in names and name in EXTRACT:
                 out = dest.with_name(dest.stem + "_extracted")
-                if not out.exists():
-                    out.mkdir()
-                    with zipfile.ZipFile(dest) as zf:
-                        for m in zf.infolist():  # refuse absolute / parent-traversal paths
-                            if m.filename.startswith("/") or ".." in m.filename.split("/"):
-                                sys.exit(f"unsafe path in zip: {m.filename}")
-                        zf.extractall(out)
-                    print(f"  extracted -> {out}", file=sys.stderr)
-    (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    print(f"MD5 verified for {len(manifest)} files; manifest at {OUT / 'manifest.json'}")
+                extract_tiles(dest, out)
+    write_json(OUT / "manifest.json", manifest)
+    print(f"Verified {verified} requested files. Manifest at {OUT / 'manifest.json'}")
+
+
+def extract_tiles(archive: Path, dest: Path) -> None:
+    with zipfile.ZipFile(archive) as zf:
+        members = zf.infolist()
+        for m in members:
+            if (
+                m.filename.startswith("/")
+                or ".." in m.filename.split("/")
+                or "\\" in m.filename
+                or ":" in m.filename
+            ):
+                raise ValueError("unsafe path in zip")
+
+        def complete(root: Path) -> bool:
+            return all(
+                (root / m.filename).is_file() and (root / m.filename).stat().st_size == m.file_size
+                for m in members
+                if not m.is_dir()
+            )
+
+        publish_directory(dest, zf.extractall, complete)
 
 
 if __name__ == "__main__":

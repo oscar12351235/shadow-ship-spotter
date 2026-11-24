@@ -38,7 +38,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import warnings
-import zipfile
 from collections import Counter
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
@@ -49,12 +48,17 @@ import pandas as pd
 
 from shadow_ship_spotter.config import describe_env, get_secret
 from shadow_ship_spotter.data import lseg as L
-from shadow_ship_spotter.paths import PROCESSED_DIR, RAW_DIR
+from shadow_ship_spotter.data.contracts import SourceError, State
+from shadow_ship_spotter.data.reference import (
+    HAINAN_SCENE,
+    LOOKUP_FIELDS,
+    NORTH_SEA_SCENE,
+    published_scene_for_lookup,
+)
+from shadow_ship_spotter.data.storage import staged_file
+from shadow_ship_spotter.paths import DATA_DIR, RAW_DIR
 
-SCENES = [
-    "S1B_IW_GRDH_1SDV_20190318T104813_20190318T104842_015408_01CDA6_F3BE",  # Hainan / SCS
-    "S1A_IW_GRDH_1SDV_20200928T171800_20200928T171831_034562_0405EA_F164",  # North Sea (xView3)
-]
+SCENES = [HAINAN_SCENE, NORTH_SEA_SCENE]
 DEFAULT_BBOX = (108.5, 17.5, 111.5, 19.5)  # lon_min, lat_min, lon_max, lat_max: off Hainan
 COVERAGE_REGIONS = {
     "south_china_sea": (105.0, 0.0, 122.0, 25.0),
@@ -63,9 +67,6 @@ COVERAGE_REGIONS = {
     "singapore_strait_ref": (103.5, 1.0, 104.5, 1.5),
     "dover_strait_ref": (1.0, 50.8, 2.0, 51.3),
 }
-GFW_ZIP = RAW_DIR / "gfw_paolo2024" / "analysis" / "industrial_vessels_v20240102.csv.zip"
-GFW_SCS = PROCESSED_DIR / "gfw_sar_detections_scs.parquet"
-GFW_COLS = ["scene_id", "timestamp", "lat", "lon", "mmsi", "matched_category", "length_m"]
 VT_HISTORY_URL = "https://vtracking.rdms.refinitiv.com/api/v1/Shipping/History"
 HISTORY_FIELDS = L.LOCATION_FIELDS + [
     "TR.AssetSpeed",
@@ -108,6 +109,9 @@ class Probe:
         return str(text).replace(self.key, "***")
 
     def _call(self, kind: str, label: str, fn: Callable[[], Any], n: int = 0) -> tuple[Any, Any]:
+        from httpx import TransportError
+        from lseg.data.errors import LDError
+
         for attempt in (1, 2):
             wait = self.min_interval_s - (time.monotonic() - self._last)
             if wait > 0:
@@ -122,7 +126,7 @@ class Probe:
                 entry.update(status="ok", seconds=round(time.monotonic() - t0, 2))
                 self.log.append(entry)
                 return res, None
-            except Exception as exc:  # noqa: BLE001 - classify every backend failure
+            except (LDError, TransportError, OSError) as exc:
                 code = getattr(exc, "code", None)
                 msg = self.clean(exc)[:400]
                 cls = L.classify_error(msg, code if isinstance(code, int) else None)
@@ -186,27 +190,7 @@ def navigators(raw: dict) -> dict[str, list[tuple[str, int]]]:
 
 # --- GFW scene detections (identifier source) -----------------------------------------------
 def gfw_scene(scene_id: str) -> pd.DataFrame:
-    cache = PROCESSED_DIR / "gfw_scenes" / f"{scene_id}.parquet"
-    if cache.exists():
-        return pd.read_parquet(cache)
-    df = pd.DataFrame(columns=GFW_COLS)
-    if GFW_SCS.exists():
-        df = pd.read_parquet(GFW_SCS, columns=GFW_COLS)
-        df = df[df.scene_id == scene_id]
-    if df.empty and GFW_ZIP.exists():
-        print(f"  scanning GFW detections zip for {scene_id} (~30 s) ...")
-        parts = []
-        with zipfile.ZipFile(GFW_ZIP) as zf:
-            member = next(m for m in zf.namelist() if m.endswith(".csv"))
-            with zf.open(member) as fh:
-                for chunk in pd.read_csv(fh, chunksize=2_000_000, usecols=GFW_COLS):
-                    parts.append(chunk[chunk.scene_id == scene_id])
-        df = pd.concat(parts, ignore_index=True)
-        df["timestamp"] = pd.to_datetime(df.timestamp, utc=True, format="mixed")
-    if not df.empty:
-        cache.parent.mkdir(parents=True, exist_ok=True)
-        df.to_parquet(cache, index=False)
-    return df
+    return published_scene_for_lookup(DATA_DIR, scene_id).to_pandas()
 
 
 def scene_time(scene_id: str, gfw: pd.DataFrame) -> datetime:
@@ -229,6 +213,8 @@ def preflight() -> dict[str, Any]:
 
 def open_desktop_session(key: str) -> dict[str, Any]:
     import lseg.data as ld
+    from httpx import TransportError
+    from lseg.data.errors import LDError
 
     try:
         with warnings.catch_warnings():
@@ -242,7 +228,7 @@ def open_desktop_session(key: str) -> dict[str, Any]:
             "open_state": state,
             "lseg_data_version": ld.__version__,
         }
-    except Exception as exc:  # noqa: BLE001
+    except (LDError, TransportError, OSError) as exc:
         msg = str(exc).replace(key, "***")[:400]
         return {"ok": False, "error_class": L.classify_error(msg), "message": msg}
 
@@ -481,7 +467,7 @@ def scene_history(
         for k in ("speed_kn", "course_deg", "heading_deg", "nav_status")
     }
     if positions:
-        pd.DataFrame(positions).to_csv(out_dir / f"history_{scene_id[:32]}.csv", index=False)
+        pd.DataFrame(positions).to_csv(out_dir / f"history_{scene_id}.csv", index=False)
 
     lo, la, hi, ha = (
         gfw.lon.min() - 0.1,
@@ -530,7 +516,7 @@ def scene_history(
             )
         rows.append(row)
     vdf = pd.DataFrame(rows)
-    vdf.to_csv(out_dir / f"history_match_{scene_id[:32]}.csv", index=False)
+    vdf.to_csv(out_dir / f"history_match_{scene_id}.csv", index=False)
     gaps = vdf.nearest_gap_min.dropna()
     close = vdf[vdf.nearest_gap_min.le(MATCH_GAP_S / 60) & vdf.n_obs_window_in_scene_bbox.gt(0)]
     res.update(
@@ -739,13 +725,15 @@ def main() -> int:
 
     now = L.utc_now()
     out_dir = a.out / f"probe_{now.strftime('%Y%m%dT%H%M%SZ')}"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=False)
     A: dict[str, Any] = {"run_utc": now, "args": {k: str(v) for k, v in vars(a).items()}}
 
     def finish(code: int) -> int:
         path = out_dir / "assessment.json"
-        path.write_text(json.dumps(jsonable(A), indent=2, default=str))
-        shutil.copyfile(path, a.out / "assessment_latest.json")
+        with staged_file(path) as stage:
+            stage.write_text(json.dumps(jsonable(A), indent=2, default=str))
+        with staged_file(a.out / "assessment_latest.json") as stage:
+            shutil.copyfile(path, stage)
         print(f"\nassessment -> {path}")
         return code
 
@@ -786,7 +774,12 @@ def main() -> int:
         A["scenes"] = {}
         all_resolved = []
         for scene_id in a.scene or SCENES:
-            gfw = gfw_scene(scene_id)
+            try:
+                gfw = gfw_scene(scene_id)
+                gfw_input = {"state": State.EMPTY if gfw.empty else State.COMPLETE}
+            except SourceError as exc:
+                gfw_input = {"state": exc.state, "reason": str(exc)}
+                gfw = pd.DataFrame(columns=LOOKUP_FIELDS)
             matched = gfw[gfw.mmsi.notna()] if not gfw.empty else gfw
             mmsis = [m for m in (L.normalise_mmsi(x) for x in matched.mmsi) if m][: a.max_vessels]
             mmsis += list(a.mmsi)
@@ -803,11 +796,16 @@ def main() -> int:
                 for c in sorted({str(v) for v in cat_by_mmsi.values()})
             }
             if not resolved.empty:
-                resolved.to_csv(out_dir / f"resolved_{scene_id[:32]}.csv", index=False)
+                resolved.to_csv(out_dir / f"resolved_{scene_id}.csv", index=False)
                 all_resolved.append(resolved)
             A["scenes"][scene_id] = {
-                "gfw_detections": len(gfw),
-                "gfw_matched_with_mmsi": len(matched),
+                "gfw_input": gfw_input,
+                "gfw_detections": (
+                    len(gfw) if gfw_input["state"] in (State.COMPLETE, State.EMPTY) else None
+                ),
+                "gfw_matched_with_mmsi": (
+                    len(matched) if gfw_input["state"] in (State.COMPLETE, State.EMPTY) else None
+                ),
                 "gfw_category_counts": (
                     gfw.matched_category.value_counts().to_dict() if not gfw.empty else {}
                 ),

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "seed": "sss-training-v1",
+  "chip_size": 80,
+  "scene_assignments": {
+    "S1A/030967/038E50": "train",
+    "S1A/034562/0405EA": "test",
+    "S1A/032644/03C7E8": "validation"
+  },
+  "sha256": {
+    "inventory/ssdd_images.csv": "5ca39d170a317e47271fafe5b32136e9ddac8ad815a683525c010840c5552885",
+    "inventory/ssdd_boxes.csv": "ab29c5025b4946cc8e17088442a8665fbe63d8b6383ca0372f82e2f6fbd3b1d5",
+    "inventory/gfw_detection_tiles.csv": "51c25a1a8086ac26757f6cc7163c068ff0b55011e3c2d1949be879d0e7a1b291",
+    "inventory/xview3_scenes.csv": "38ba05fa27fcb6ddfb888308ba048976ab5dab2d06df0a1118e0d576c3ccd765",
+    "raw/gfw_paolo2024/training/detection_tiles.zip": "0d69d133380f78eefd2d896b89a392ceedd37f771488f7abac2902f0eb1b0b29",
+    "raw/xview3/validation.csv": "f01e9d11604495d035debbdc00c3385d505b159148b26a9c447271de3762515a",
+    "raw/xview3/scenes/b1844cde847a3942v/b1844cde847a3942v/VV_dB.tif": "36566c102abcd9396d848875cf3740b48d6bb8b250e0b20c0c2fecf3269badd7",
+    "raw/xview3/scenes/b1844cde847a3942v/b1844cde847a3942v/VH_dB.tif": "40a462a748bdc14995813501a9e59f0e5aac05404282c1a2bfbc0fa36ba5e3f7",
+    "raw/xview3/scenes/fc2f57371370c521v/fc2f57371370c521v/VV_dB.tif": "1912a28c0cf26ebd3fa609c980316a9784c4f4f24c51b7d003870e8a5109fa9f",
+    "raw/xview3/scenes/fc2f57371370c521v/fc2f57371370c521v/VH_dB.tif": "b80a5693e74820dac4136d5683e251fe6948b6d876dee14b9bd45b22ad31f5ef",
+    "raw/xview3/scenes/fe6a8d80fb5ebb8ev/fe6a8d80fb5ebb8ev/VV_dB.tif": "47baa69e20732ab3a87562d79de65be41560fcc0a94e15c5a712260eb2a10f85",
+    "raw/xview3/scenes/fe6a8d80fb5ebb8ev/fe6a8d80fb5ebb8ev/VH_dB.tif": "e7ad8e12493015743bbf56b39a70ffa6e834a18413567f7c378599124e08b4f9"
+  }
+}
