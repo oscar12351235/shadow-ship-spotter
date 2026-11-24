@@ -1,0 +1,191 @@
+{
+  "ssdd": {
+    "status": "downloaded_and_validated",
+    "needs": [
+      "training_evaluation_benchmark"
+    ],
+    "name": "Official SSDD (SAR Ship Detection Dataset), official release",
+    "filename": "Official-SSDD-OPEN.rar",
+    "gdrive_id": "1glNJUGotrbEyk43twwB9556AdngJsynZ",
+    "landing_page": "https://github.com/TianwenZhang0825/Official-SSDD",
+    "mirror": "https://pan.baidu.com/s/1Lpg28ZvMSgNXq00abHMZ5Q (password 2021)",
+    "license": "Apache-2.0 (as stated on the GitHub repository)",
+    "citation": "T. Zhang et al., \"SAR Ship Detection Dataset (SSDD): Official Release and Comprehensive Data Analysis,\" Remote Sens., 13(18), 3690, 2021. https://doi.org/10.3390/rs13183690",
+    "size_bytes": 1043241197,
+    "sha256": "daf79e022dffd50382cfd22ce7b5cfa677ebd0477a33971c1bc5f59f24f23ad9",
+    "downloaded_on": "2026-11-23",
+    "local_path": "data/raw/ssdd/",
+    "reproduce": "uv run python scripts/download_ssdd.py"
+  },
+  "xview3": {
+    "status": "downloaded_and_validated (labels: train+validation; 3 validation scenes)",
+    "needs": [
+      "training_evaluation"
+    ],
+    "landing_page": "https://iuu.xview.us/",
+    "access": "free account required (AWS Cognito login); label CSVs direct; scenes via personal signed links valid a few hours (aria2 lists). Save lists + CSVs into data/raw/xview3/ manually.",
+    "license": "CC BY-NC-SA 4.0; contains modified Copernicus Sentinel data (2020); do not redistribute download links",
+    "citation": "F. Paolo et al., \"xView3-SAR: Detecting Dark Fishing Activity Using Synthetic Aperture Radar Imagery,\" NeurIPS 2022 Datasets and Benchmarks.",
+    "files_sha1_official": {
+      "train.csv": "98505305bc8638edbb1977c9a9fd4e8100f5c8b0",
+      "validation.csv": "ad89b7763b2cc4c72ab90f5c253b1d6ed83b5cd1",
+      "public.csv": "8ed2431d0af36bfcc1de51bca4b50af59d1ae16f",
+      "ESA_xView3_sceneName_mapping.csv": "09357dfd8c4c1a0f45f7d0c6999510f63eec848d",
+      "GRD_train.csv": "64a3a294a1c9914e92f832d82fe01e68824c70ce",
+      "GRD_validation.csv": "a3718b4c092170773fd6a021d9dfa4f194a24616",
+      "shoreline/validation.tar.gz": "0256d98a42583ffa3785bc6c997d3910b2ea46a0"
+    },
+    "downloaded_files": [
+      "train.csv",
+      "validation.csv",
+      "ESA_xView3_sceneName_mapping.csv",
+      "GRD_train.csv",
+      "GRD_validation.csv",
+      "validation.tar (= shoreline/validation.tar.gz, gzip; saved under this name; not extracted)"
+    ],
+    "downloaded_scenes": {
+      "b1844cde847a3942v": {
+        "partition": "validation",
+        "archive_bytes": 1398682785,
+        "sha1": "470e0f30cc0fe84e46a88ee6ed9fe347e0689170"
+      },
+      "fc2f57371370c521v": {
+        "partition": "validation",
+        "archive_bytes": 1488819883,
+        "sha1": "991774de897651dbae4b1e4f72b6a090d6fed910"
+      },
+      "fe6a8d80fb5ebb8ev": {
+        "partition": "validation",
+        "archive_bytes": 1255563884,
+        "sha1": "b9f76d03683bd591dcdeea99bfb5b08c218ccf7e"
+      }
+    },
+    "downloaded_on": "2026-11-23",
+    "local_path": "data/raw/xview3/",
+    "reproduce": "uv run python -I scripts/download_xview3_scenes.py --list validation.txt --scenes <ids>"
+  },
+  "sarfish": {
+    "status": "located_not_downloaded",
+    "needs": [
+      "training_evaluation (imagery only without login)"
+    ],
+    "landing_page": "https://huggingface.co/datasets/ConnorLuckettDSTG/SARFish",
+    "sample": "https://huggingface.co/datasets/ConnorLuckettDSTG/SARFishSample",
+    "access": "public, ungated Hugging Face repos (original ESA GRD+SLC SAFE zips of all 753 xView3 scenes); labels only via login-gated xView3 page",
+    "license": "Apache-2.0 (HF card); labels follow xView3 terms",
+    "size": "GRD zips 0.53-1.21 GB each, 673 GB total GRD; full dataset 3293 GB compressed",
+    "citation": "C. Luckett et al., \"The SARFish Dataset and Challenge,\" WACV Workshops 2024."
+  },
+  "gfw_paolo2024_training": {
+    "status": "downloaded_and_validated (detection_tiles.zip + README)",
+    "needs": [
+      "training_evaluation (classifier stage)"
+    ],
+    "landing_page": "https://doi.org/10.6084/m9.figshare.24309469",
+    "license": "CC BY 4.0",
+    "citation": "F. S. Paolo et al., \"Satellite mapping reveals extensive industrial activity at sea,\" Nature 625, 85-91 (2024).",
+    "files": {
+      "detection_tiles.zip": {
+        "bytes": 142908413,
+        "md5": "b3bcd32490a3e0d66b7ee56d2e3ade17"
+      }
+    },
+    "downloaded_on": "2026-11-23",
+    "local_path": "data/raw/gfw_paolo2024/training/",
+    "reproduce": "uv run python -I scripts/download_gfw_paolo2024.py"
+  },
+  "gfw_paolo2024_analysis": {
+    "status": "downloaded_and_validated (industrial_vessels table + README)",
+    "needs": [
+      "map_reveal (AIS-matched SAR detections by GFW; model predictions, not ground truth, not raw AIS)"
+    ],
+    "landing_page": "https://doi.org/10.6084/m9.figshare.24309475",
+    "license": "CC BY 4.0",
+    "files": {
+      "industrial_vessels_v20240102.csv.zip": {
+        "bytes": 1728747413,
+        "md5": "a98f09e156b2cbb6dfb4887bd7efc0de"
+      }
+    },
+    "downloaded_on": "2026-11-23",
+    "local_path": "data/raw/gfw_paolo2024/analysis/",
+    "reproduce": "uv run python -I scripts/download_gfw_paolo2024.py --with-detections"
+  },
+  "planetary_computer_s1_grd": {
+    "status": "access_proven (one 3072px window read)",
+    "needs": [
+      "map_reveal (imagery, footprints, acquisition times)"
+    ],
+    "landing_page": "https://planetarycomputer.microsoft.com/dataset/sentinel-1-grd",
+    "access": "anonymous SAS token https://planetarycomputer.microsoft.com/api/sas/v1/token/sentinel-1-grd; STAC https://planetarycomputer.microsoft.com/api/stac/v1",
+    "license": "Copernicus Sentinel data terms (free, attribution); Planetary Computer terms of use",
+    "notes": "COG per polarisation, uint16 DN in radar geometry with GCPs; item ids omit the 4-char product suffix",
+    "reproduce": "uv run python -I scripts/fetch_pc_s1_window.py --scene <ESA name> --lat <lat> --lon <lon>"
+  },
+  "copernicus_data_space": {
+    "status": "catalogue_verified_anonymous; download_not_tested (account required)",
+    "needs": [
+      "map_reveal (authoritative imagery archive, footprints)"
+    ],
+    "landing_page": "https://dataspace.copernicus.eu/",
+    "access": "OData/STAC catalogue anonymous; downloads need free account + OAuth token (never commit credentials)",
+    "license": "Copernicus Sentinel data terms (free, full and open)"
+  },
+  "gfw_api": {
+    "status": "located_not_used (token required)",
+    "needs": [
+      "ais_map",
+      "map_reveal"
+    ],
+    "landing_page": "https://globalfishingwatch.org/our-apis/",
+    "access": "free self-service registration; personal API token; 50k requests/day, 1.5M/month",
+    "license": "non-commercial, CC BY-NC 4.0 (API terms); dataset-specific restrictions apply"
+  },
+  "dma_ais": {
+    "status": "located_not_downloaded",
+    "needs": [
+      "ais_map (Danish waters only)",
+      "matching validation with raw AIS"
+    ],
+    "landing_page": "http://aisdata.ais.dk/",
+    "access": "public S3 listing (http://aisdata.ais.dk.s3.eu-central-1.amazonaws.com); 2020 as monthly zips (~15-17 GB), recent years as daily zips (~0.6-0.75 GB)",
+    "license": "see !_README_information_CSV_files.txt and DMA terms (not reviewed in detail)"
+  },
+  "noaa_marinecadastre_ais": {
+    "status": "located_not_downloaded",
+    "needs": [
+      "ais_map (US waters only)"
+    ],
+    "landing_page": "https://coast.noaa.gov/htdata/CMSP/AISDataHandler/2020/index.html"
+  },
+  "lseg_workspace": {
+    "status": "access_tested (desktop session); suitable only for recent dates, commercial-fleet subset",
+    "needs": [
+      "ais_map (recent dates only)",
+      "matching (recent imagery only)"
+    ],
+    "name": "LSEG Workspace (Eikon) vessel data via LSEG Data Library for Python",
+    "access": "desktop session: Workspace desktop app running + logged in on the same machine (Data API Proxy 127.0.0.1:9000); EIKON_APP_KEY in git-ignored .env (never commit)",
+    "sdk": "lseg-data 2.1.1 (dependency group 'lseg')",
+    "endpoints_used": [
+      "Search view VesselPhysicalAssets (latest position index)",
+      "get_data TR.AssetLocation*/TR.Asset* fields with SDate/EDate (day resolution)",
+      "local /api/status and /api/throttling/limits"
+    ],
+    "limits": "5 req/s, 10,000 req/day, 50 MB/min, 5 GB/day (local throttling endpoint); Search top+skip <= 10,000",
+    "license": "LSEG Workspace terms: licensed for individual use; do not commit or redistribute data; display rights in our app unverified",
+    "assessment": "docs/lseg_shipping_access_assessment.md",
+    "tested_on": "2026-11-23",
+    "local_path": "data/raw/lseg/ (git-ignored samples + assessment.json)",
+    "reproduce": "uv run python -I scripts/probe_lseg_shipping.py"
+  },
+  "lseg_vessel_tracking_api": {
+    "status": "located_not_tested (no VESSEL_TRACKING_API_KEY; endpoint answers 401 without credentials)",
+    "needs": [
+      "ais_map (last 24 h only)"
+    ],
+    "landing_page": "https://developers.lseg.com/en/article-catalog/article/vessel-tracking-part-1-visualizing-historical-vessel-positions",
+    "endpoint": "GET https://vtracking.rdms.refinitiv.com/api/v1/Shipping/History (one IMO/RIC/ENI per call; Authorization: apikey-v1 <key>)",
+    "notes": "documented history = most recent 24 h only; separate key/product; Eikon app key not assumed to work"
+  }
+}
