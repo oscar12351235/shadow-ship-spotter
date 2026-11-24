@@ -1,33 +1,66 @@
 # SSS: Shadow Ship Spotter
 
-University ML project: detect vessels in Sentinel-1 radar imagery, compare them with AIS, and
-reveal detections that cannot be matched to available AIS records — on an interactive map
-("start with the AIS-visible picture, then reveal what satellite imagery adds"). Target region:
-South China Sea fishing activity. An unmatched detection does **not** establish nationality,
-illegal fishing or deliberate AIS disabling.
+A university machine-learning project that is meant to become a working application.
+- **Input:** satellite radar images (Sentinel-1 SAR) of the sea, where ships appear as bright
+  points whatever the weather or time of day.
+- **What it does:** detects those ships, compares them with AIS, the radio positions that ships
+  report themselves, and shows on an interactive map the detections that cannot be matched to any
+  available AIS record.
+- **The interaction:** start with the AIS-visible picture, then press "Reveal hidden vessels" to
+  see what the satellite adds.
+- **Target:** fishing activity in the South China Sea, for fisheries authorities deciding where to
+  focus limited monitoring.
 
-**Project status and full context for new contributors/agents: [`context.md`](context.md).**
+An unmatched detection does **not** prove illegal fishing, nationality, or a deliberately disabled
+transponder. AIS coverage may simply be poor, or the boat too small to carry AIS.
+
+**Full project context** (status, every data source explained, every file explained, decisions,
+next steps): [`context.md`](context.md).
+
+## Where the project is now (2026-11-23)
+
+- ✅ **Step 2 (data foundation):**
+  - training/evaluation data downloaded and validated: xView3-SAR scenes and labels, SSDD, GFW
+    detection tiles;
+  - satellite imagery access for the South China Sea proven (Planetary Computer, no account);
+  - GFW's AIS-matched detections available as a comparison layer.
+- ✅ **AIS source investigation:** LSEG Workspace (Eikon) works only for recent dates, as a partial
+  commercial-fleet layer. A complete AIS source for the South China Sea is still the main open
+  problem.
+- 📋 **Next:** data splits, chip extraction and a CFAR detection baseline. No model, matching code
+  or app exists yet.
 
 ## Setup
 
-macOS/Linux: `./install.sh` · Windows: `.\install.bat` (both run `uv sync --python 3.12 --all-groups`).
+- macOS/Linux: `./install.sh`
+- Windows: `.\install.bat`
 
-## Data (step 2 — acquisition and validation)
+Both run `uv sync --python 3.12 --all-groups` and require [uv](https://docs.astral.sh/uv/).
 
-- What we use and why: [`docs/data_sources.md`](docs/data_sources.md)
-- Validation results: [`docs/validation_results.md`](docs/validation_results.md)
-- Data for the AIS map / "Reveal hidden vessels": [`docs/map_reveal_data_assessment.md`](docs/map_reveal_data_assessment.md)
-- Layout + reproduction commands: [`data/README.md`](data/README.md); registry: [`data/sources.json`](data/sources.json)
-- Inspection notebook: [`notebooks/01_data_inspection.ipynb`](notebooks/01_data_inspection.ipynb)
+Local secrets (e.g. the LSEG app key) go in a git-ignored `.env`; see `.env.example`.
 
-Large data lives in `data/raw/` and `data/processed/` and is never committed. xView3 requires a
-personal account; its signed download links must never be committed or shared.
+## Where to find things
+
+| You want to know… | Read |
+|---|---|
+| Everything, from scratch | [`context.md`](context.md) |
+| What each data source contains, what it is for, whether it is useful, licences | [`docs/data_sources.md`](docs/data_sources.md) |
+| What was checked on each dataset and the results | [`docs/validation_results.md`](docs/validation_results.md) |
+| What the map and "Reveal hidden vessels" need, and realistic demo routes | [`docs/map_reveal_data_assessment.md`](docs/map_reveal_data_assessment.md) |
+| Whether LSEG Workspace (Eikon) can supply AIS | [`docs/lseg_shipping_access_assessment.md`](docs/lseg_shipping_access_assessment.md) |
+| Data folder layout and exact reproduction commands | [`data/README.md`](data/README.md); registry [`data/sources.json`](data/sources.json) |
+| A visual look at the data | [`notebooks/01_data_inspection.ipynb`](notebooks/01_data_inspection.ipynb), [`docs/figures/`](docs/figures/) |
+
+**Rules for data and secrets:**
+- Large data lives in `data/raw/` and `data/processed/` and is never committed.
+- xView3 requires a personal account; its signed download links must never be committed or shared.
+- LSEG data samples are licensed and stay local.
 
 ## Common commands
 
 ```bash
-uv run pytest
-uv run black .
-uv run ruff check .
-uv run mypy src
+uv run pytest          # unit tests
+uv run black .         # format
+uv run ruff check .    # lint
+uv run mypy src        # type-check
 ```

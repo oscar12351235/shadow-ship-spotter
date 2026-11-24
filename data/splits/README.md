@@ -1,5 +1,15 @@
 # Partition assignments
 
+**What this folder is for.** A *split* assigns every image, chip or scene to exactly one
+partition:
+- **train**: used to fit models;
+- **validation**: used to tune them;
+- **test**: used once for the final evaluation.
+
+If near-identical data ends up on both sides, results look better than they are ("leakage").
+This folder will hold versioned split files, so that the descriptor-based and CNN approaches are
+compared on exactly the same partitions.
+
 **No split has been finalised yet (step 2 deliberately stops before splitting).**
 
 Constraints established by the step-2 validation (see `docs/validation_results.md`):

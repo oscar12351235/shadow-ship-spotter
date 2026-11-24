@@ -157,5 +157,35 @@
       "ais_map (US waters only)"
     ],
     "landing_page": "https://coast.noaa.gov/htdata/CMSP/AISDataHandler/2020/index.html"
+  },
+  "lseg_workspace": {
+    "status": "access_tested (desktop session); suitable only for recent dates, commercial-fleet subset",
+    "needs": [
+      "ais_map (recent dates only)",
+      "matching (recent imagery only)"
+    ],
+    "name": "LSEG Workspace (Eikon) vessel data via LSEG Data Library for Python",
+    "access": "desktop session: Workspace desktop app running + logged in on the same machine (Data API Proxy 127.0.0.1:9000); EIKON_APP_KEY in git-ignored .env (never commit)",
+    "sdk": "lseg-data 2.1.1 (dependency group 'lseg')",
+    "endpoints_used": [
+      "Search view VesselPhysicalAssets (latest position index)",
+      "get_data TR.AssetLocation*/TR.Asset* fields with SDate/EDate (day resolution)",
+      "local /api/status and /api/throttling/limits"
+    ],
+    "limits": "5 req/s, 10,000 req/day, 50 MB/min, 5 GB/day (local throttling endpoint); Search top+skip <= 10,000",
+    "license": "LSEG Workspace terms: licensed for individual use; do not commit or redistribute data; display rights in our app unverified",
+    "assessment": "docs/lseg_shipping_access_assessment.md",
+    "tested_on": "2026-11-23",
+    "local_path": "data/raw/lseg/ (git-ignored samples + assessment.json)",
+    "reproduce": "uv run python -I scripts/probe_lseg_shipping.py"
+  },
+  "lseg_vessel_tracking_api": {
+    "status": "located_not_tested (no VESSEL_TRACKING_API_KEY; endpoint answers 401 without credentials)",
+    "needs": [
+      "ais_map (last 24 h only)"
+    ],
+    "landing_page": "https://developers.lseg.com/en/article-catalog/article/vessel-tracking-part-1-visualizing-historical-vessel-positions",
+    "endpoint": "GET https://vtracking.rdms.refinitiv.com/api/v1/Shipping/History (one IMO/RIC/ENI per call; Authorization: apikey-v1 <key>)",
+    "notes": "documented history = most recent 24 h only; separate key/product; Eikon app key not assumed to work"
   }
 }

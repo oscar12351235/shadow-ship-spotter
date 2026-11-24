@@ -29,3 +29,8 @@ htmlcov/
 data/raw/
 data/processed/
 *.part
+
+# Local secrets (API keys) - never commit
+.env
+.env.*
+!.env.example

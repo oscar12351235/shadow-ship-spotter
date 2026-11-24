@@ -1,6 +1,22 @@
 # Data assessment for the AIS map and the "Reveal hidden vessels" interaction
 
-_Verified 2026-11-23. Sources and access details: [`data_sources.md`](data_sources.md)._
+**What this file is.** The application's core interaction:
+1. Show the AIS-visible vessels for a date and area.
+2. Press "Reveal hidden vessels".
+3. Show the satellite detections that AIS does not explain.
+
+This file breaks that interaction into steps, says which data each step needs and whether we have
+it, and describes realistic routes to a first real demonstration.
+
+_Verified 2026-11-23. Sources and access details: [`data_sources.md`](data_sources.md). LSEG
+evidence: [`lseg_shipping_access_assessment.md`](lseg_shipping_access_assessment.md)._
+
+**Bottom line:**
+- **Imagery is solved:** Planetary Computer works without an account.
+- **AIS at image time is not solved for the SCS:**
+  - For historical scenes we only have GFW's AIS-matched detections, a labelled stand-in.
+  - For recent scenes LSEG Workspace gives a dense but partial commercial-fleet layer.
+  - A GFW API token has not been requested yet.
 
 ## 1. What the interaction needs, step by step
 
@@ -8,10 +24,10 @@ _Verified 2026-11-23. Sources and access details: [`data_sources.md`](data_sourc
 |---|---|---|---|
 | Date selector shows available observations | S1 scene footprints + acquisition times per date | exact start/stop times | ✅ CDSE OData / PC STAC, anonymous queries work |
 | Area of interest (zone or viewport) | footprint ∩ AOI | — | ✅ footprints in catalogue items (GeoJSON) |
-| Initial AIS layer | AIS positions near the acquisition time (± minutes) | must bracket the image snapshot | ⚠️ see §3 |
+| Initial AIS layer | AIS positions near the acquisition time (± minutes) | must bracket the image snapshot | ⚠️ see §3. Historical SCS: GFW stand-in only. Recent: LSEG partial layer (Route D) |
 | Reveal: imagery | GRD rasters for the AOI | the selected acquisition | ✅ PC COG window read proven (no account); CDSE SAFE with account |
 | Reveal: our detections | our pipeline on that imagery | — | 📋 pipeline not built yet |
-| Matching | AIS interpolated to acquisition time; distance/time gates | AIS within e.g. ±10–30 min, interpolated | ⚠️ needs raw AIS or GFW-matched proxy |
+| Matching | AIS interpolated to acquisition time; distance/time gates | AIS within e.g. ±10–30 min, interpolated | ⚠️ Raw AIS needed. Recent images: LSEG (partial). Danish waters: DMA. Historical SCS: GFW proxy only |
 | Evidence panel | image patch, coords, timestamp, model version, score, match status | — | ✅ all derivable once pipeline exists |
 | "No imagery" vs "no vessels" | footprint coverage of AOI on that date | — | ✅ from catalogue footprints |
 
@@ -52,6 +68,31 @@ _Verified 2026-11-23. Sources and access details: [`data_sources.md`](data_sourc
   but point-level access terms were not confirmed. GFW SAR detections (recent) also via portal/API.
 - Blocker: someone on the team must register and create a token (do **not** commit it; use an
   environment variable / `.env` excluded by `.gitignore`).
+
+### Route D — South China Sea, recent dates, LSEG Workspace AIS — tested, works with caveats
+
+**Imagery:** a Sentinel-1 acquisition from the last few days over an SCS area, from PC or CDSE.
+
+**AIS layer:** LSEG Workspace via our app key, through a desktop session (Workspace must be running).
+The layer at the acquisition time T is reconstructed in three steps:
+1. Find candidate vessels whose latest position is within a speed-based buffer around the area.
+2. Read their history for the day(s) around T.
+3. Keep the report nearest T within ±30 min, if it is inside the area.
+
+This is implemented in `scripts/probe_lseg_shipping.py`, `recent_reconstruction()`.
+
+**Measured:**
+- Recent reports arrive about every 3 min.
+- Off Hainan, only **9 vessels** were inside a 3° × 2° box at T.
+- LSEG's universe is a commercial-fleet subset: 223 fishing-typed vessels in the whole SCS box.
+
+**Limitations:**
+- Unsuitable for historical scenes: there is no historical area query, and 2019/2020 history is
+  sparse.
+- The desktop session cannot run on a server.
+- Display rights are unverified.
+- The layer must be labelled "LSEG Workspace AIS (subset)", and LSEG absence must never be read as
+  "hidden".
 
 ### Route C — Danish waters, raw AIS, method validation
 - xView3 scene `fc2f57371370c521v` (2020-09-28 17:18:00–17:18:31Z, 55–57°N 4–9°E) already

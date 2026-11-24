@@ -1,9 +1,36 @@
 # Validation results (step 2)
 
+**What this file is.** Before any data is used for modelling or for the map, we check that it is
+what it claims to be:
+- files are complete and unaltered;
+- labels line up with the images;
+- train and test sets don't share images;
+- and so on.
+
+This file records **what was checked on each dataset, the actual numbers, and what they mean for
+the project**. What each dataset is and whether it is useful is in `context.md` §5 and
+`docs/data_sources.md`.
+
 _Run on 2026-11-23. All numbers below were produced by the scripts named in each section; the
 machine-readable outputs are in `data/inventory/`. Figures are in `docs/figures/`._
 
+**Summary of what the checks mean:**
+
+| Dataset | Verdict after validation |
+|---|---|
+| **SSDD** | Labels are consistent, but the official train/test split leaks duplicate images. Usable as a benchmark only with our own duplicate-aware split. |
+| **xView3** | Files are intact and labels line up with the images to within 9 m. Train labels have no boxes, and their `confidence` column carries no extra information. Small fishing boats are hard to see. |
+| **GFW tiles** | Intact and parseable. Ids are lon-first (undocumented), and the band scaling is undocumented. GFW's own train/test share 2 scenes. |
+| **GFW detections table** | Intact. Timestamps are scene times. 56 % of SCS detections are unmatched, which is partly an AIS-coverage effect. |
+| **Planetary Computer** | A real SCS image window is readable anonymously in ~10 s, and GFW detections fall on bright targets. |
+
 ## 1. SSDD (`scripts/validate_ssdd.py`)
+
+**Why these checks:**
+- SSDD ships its labels in two formats and an official split.
+- If the formats disagree, or the same image appears in both train and test, any benchmark result
+  would be wrong.
+- We also needed to know whether the images are plain radar greyscale.
 
 Inputs: `BBox_SSDD/coco_style` images + COCO JSON; VOC XML and ImageSets as cross-check.
 Outputs: `ssdd_images.csv` (1,160 rows), `ssdd_boxes.csv` (2,587 rows), `ssdd_validation.json`,
@@ -36,6 +63,14 @@ duplicates (and visually confirmed same-scene crops) into the same partition. Fa
 need a documented single-channel conversion (or exclusion) for descriptor features.
 
 ## 2. xView3-SAR (`scripts/validate_xview3.py`)
+
+**Why these checks.** xView3 is our primary dataset, so we checked:
+- that the files are the official ones (checksums);
+- how good each label file is (boxes, sources, confidence);
+- above all, that each label's coordinates and pixel position really point at the object in the
+  image.
+
+Matching against AIS later depends on positions being right.
 
 Label files (all scenes) — `xview3_label_files.json`:
 
@@ -73,6 +108,12 @@ therefore a hard case — directly relevant to the SCS fishing fleet.
 
 ## 3. GFW detection tiles (`scripts/validate_gfw_tiles.py`)
 
+**Why these checks.** To use the tiles for the classifier, we need to know:
+- the label balance;
+- which scene and time each tile comes from, for grouping the split by scene;
+- whether the ids and positions are consistent;
+- what the pixel values look like.
+
 `gfw_detection_tiles.csv` (11,965 rows), `gfw_detection_tiles_validation.json`,
 `docs/figures/gfw_detection_tiles.png`.
 
@@ -88,6 +129,13 @@ therefore a hard case — directly relevant to the SCS fishing fleet.
 
 ## 4. GFW SAR detections table (`scripts/summarise_gfw_sar_detections.py`)
 
+**Why these checks.** This table is our stand-in "AIS-visible" layer for historical SCS scenes and
+our way to pick demo dates. We needed:
+- its size;
+- the match categories;
+- what `timestamp` means;
+- how much of it falls in the SCS.
+
 `gfw_sar_detections_summary.json`, `gfw_sar_scs_scenes.csv` (17,529 scenes);
 SCS subset in `data/processed/gfw_sar_detections_scs.parquet` (git-ignored).
 
@@ -97,6 +145,10 @@ SCS subset in `data/processed/gfw_sar_detections_scs.parquet` (git-ignored).
 - Each scene has a single timestamp (max spread 0 s) → timestamp is scene acquisition time.
 
 ## 5. Planetary Computer access (`scripts/fetch_pc_s1_window.py`)
+
+**Why this check.** The "Reveal" button needs the real image for the selected date and area. We
+verified that a historical SCS image can be found and read without an account, quickly, and that
+its content matches GFW's detections for the same instant.
 
 - Anonymous SAS token obtained; item `S1B_IW_GRDH_1SDV_20190318T104813_…_01CDA6` (2019-03-18
   10:48:27.9Z) found; full scene 25,204 × 19,462 uint16, 231 GCPs (EPSG:4326).

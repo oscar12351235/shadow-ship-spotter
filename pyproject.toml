@@ -28,6 +28,9 @@ lint = [
     "ruff>=0.4,<1.0",
     "mypy>=1.10,<2.0",
 ]
+lseg = [
+    "lseg-data>=2.1.1",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.26,<0.12.0"]
